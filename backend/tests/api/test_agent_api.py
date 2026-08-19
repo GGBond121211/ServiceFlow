@@ -1,0 +1,175 @@
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from serviceflow.agent.model import ModelResult
+from serviceflow.api.app import create_app
+from serviceflow.infrastructure.database import Base
+from serviceflow.infrastructure.seed import seed_database
+
+
+class ApiFakeModel:
+    def complete_json(self, *, system: str, user: str) -> ModelResult:
+        responses: dict[str, dict[str, object]] = {
+            "Cancel ORDER-001": {
+                "order_id": "ORDER-001",
+                "requested_action": "cancel",
+                "issue_type": "none",
+                "issue_summary": "Cancel before shipment",
+                "missing_fields": [],
+            },
+            "Cancel my order": {
+                "order_id": None,
+                "requested_action": "cancel",
+                "issue_type": "none",
+                "issue_summary": "Cancel before shipment",
+                "missing_fields": ["order_id"],
+            },
+            "The order is ORDER-001": {
+                "order_id": "ORDER-001",
+                "requested_action": None,
+                "issue_type": "none",
+                "issue_summary": "Provides the missing order",
+                "missing_fields": ["requested_action"],
+            },
+            "Refund ORDER-003": {
+                "order_id": "ORDER-003",
+                "requested_action": "refund",
+                "issue_type": "quality",
+                "issue_summary": "Headphones are defective",
+                "missing_fields": [],
+            },
+        }
+        return ModelResult(
+            content=responses[user],
+            model="fake-api-model",
+            input_tokens=10,
+            output_tokens=5,
+        )
+
+
+@pytest.fixture
+def client(tmp_path: Path) -> Iterator[TestClient]:
+    engine = create_engine(f"sqlite+pysqlite:///{(tmp_path / 'agent-api.db').as_posix()}")
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    Base.metadata.create_all(engine)
+    with factory() as session:
+        seed_database(session)
+
+    application = create_app(model=ApiFakeModel(), session_factory=factory)
+    with TestClient(application) as test_client:
+        yield test_client
+    engine.dispose()
+
+
+def create_conversation(client: TestClient) -> str:
+    response = client.post("/api/v1/conversations", json={"user_id": "USER-001"})
+    assert response.status_code == 201
+    return response.json()["thread_id"]
+
+
+def test_create_and_get_empty_conversation(client: TestClient) -> None:
+    thread_id = create_conversation(client)
+
+    response = client.get(f"/api/v1/conversations/{thread_id}")
+    paths = client.get("/openapi.json").json()["paths"]
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "thread_id": thread_id,
+        "assistant_message": "",
+        "decision": None,
+        "policy_id": None,
+        "tool_events": [],
+        "final_business_state": {},
+        "approval": None,
+        "model": None,
+        "prompt_version": None,
+        "token_usage": {"input": 0, "output": 0},
+    }
+    assert "/api/v1/conversations" in paths
+    assert "/api/v1/conversations/{thread_id}/messages" in paths
+    assert "/api/v1/conversations/{thread_id}" in paths
+    assert "/api/v1/conversations/{thread_id}/approvals/{approval_id}" in paths
+
+
+def test_message_directly_processes_and_exposes_trace(client: TestClient) -> None:
+    thread_id = create_conversation(client)
+
+    response = client.post(
+        f"/api/v1/conversations/{thread_id}/messages",
+        json={"message": "Cancel ORDER-001"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["decision"] == "cancel"
+    assert body["policy_id"] == "POL-CANCEL-01"
+    actual_tools = []
+    for event in body["tool_events"]:
+        actual_tools.append(event["tool"])
+    assert actual_tools == ["get_order", "cancel_order"]
+    assert body["final_business_state"] == {"order_status": "cancelled"}
+    assert body["model"] == "fake-api-model"
+    assert body["prompt_version"] == "service_agent_v1"
+    assert body["token_usage"] == {"input": 10, "output": 5}
+    assert client.get(f"/api/v1/conversations/{thread_id}").json() == body
+
+
+def test_second_message_supplies_missing_order_in_same_thread(client: TestClient) -> None:
+    thread_id = create_conversation(client)
+
+    missing = client.post(
+        f"/api/v1/conversations/{thread_id}/messages",
+        json={"message": "Cancel my order"},
+    ).json()
+    completed = client.post(
+        f"/api/v1/conversations/{thread_id}/messages",
+        json={"message": "The order is ORDER-001"},
+    ).json()
+
+    assert missing["decision"] == "ask_for_info"
+    assert missing["tool_events"] == []
+    assert "order_id" in missing["assistant_message"]
+    assert completed["decision"] == "cancel"
+    assert completed["final_business_state"] == {"order_status": "cancelled"}
+
+
+@pytest.mark.parametrize(
+    ("approved", "approval_status", "order_status"),
+    [(True, "approved", "refunded"), (False, "rejected", "delivered")],
+)
+def test_approval_endpoint_resumes_approve_and_reject(
+    client: TestClient,
+    approved: bool,
+    approval_status: str,
+    order_status: str,
+) -> None:
+    thread_id = create_conversation(client)
+    pending = client.post(
+        f"/api/v1/conversations/{thread_id}/messages",
+        json={"message": "Refund ORDER-003"},
+    ).json()
+
+    assert pending["decision"] == "approval_required"
+    assert pending["approval"]["status"] == "pending"
+    approval_id = pending["approval"]["id"]
+
+    response = client.post(
+        f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
+        json={"approved": approved},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["approval"] == {"id": approval_id, "status": approval_status}
+    assert body["final_business_state"]["order_status"] == order_status
+    assert body["tool_events"][-1]["tool"] == "decide_approval"
+    if approved:
+        assert body["final_business_state"]["refund_status"] == "completed"
+    else:
+        assert "refund_status" not in body["final_business_state"]

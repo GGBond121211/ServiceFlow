@@ -1,0 +1,69 @@
+{
+  "users": [
+    {"id": "USER-001", "display_name": "Lin"},
+    {"id": "USER-002", "display_name": "Chen"},
+    {"id": "USER-003", "display_name": "Wang"}
+  ],
+  "orders": [
+    {
+      "id": "ORDER-001", "user_id": "USER-001", "status": "paid",
+      "total_amount": "199.00", "placed_at": "2026-07-28T09:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-001", "product_name": "Mechanical Keyboard", "category": "electronics", "unit_price": "199.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-002", "user_id": "USER-001", "status": "shipped",
+      "total_amount": "499.00", "placed_at": "2026-07-22T10:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-002", "product_name": "Office Chair", "category": "home", "unit_price": "499.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-003", "user_id": "USER-001", "status": "delivered",
+      "total_amount": "899.00", "placed_at": "2026-07-10T11:00:00+00:00", "delivered_at": "2026-07-28T11:00:00+00:00",
+      "items": [{"id": "ITEM-003", "product_name": "Wireless Headphones", "category": "electronics", "unit_price": "899.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-004", "user_id": "USER-002", "status": "delivered",
+      "total_amount": "199.00", "placed_at": "2026-07-01T08:00:00+00:00", "delivered_at": "2026-07-05T08:00:00+00:00",
+      "items": [{"id": "ITEM-004", "product_name": "USB-C Hub", "category": "electronics", "unit_price": "199.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-005", "user_id": "USER-002", "status": "cancelled",
+      "total_amount": "499.00", "placed_at": "2026-07-06T09:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-005", "product_name": "Desk Lamp", "category": "home", "unit_price": "499.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-006", "user_id": "USER-002", "status": "paid",
+      "total_amount": "899.00", "placed_at": "2026-07-30T13:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-006", "product_name": "Monitor", "category": "electronics", "unit_price": "899.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-007", "user_id": "USER-002", "status": "delivered",
+      "total_amount": "499.00", "placed_at": "2026-07-18T14:00:00+00:00", "delivered_at": "2026-07-31T14:00:00+00:00",
+      "items": [{"id": "ITEM-007", "product_name": "Gaming Mouse", "category": "electronics", "unit_price": "499.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-008", "user_id": "USER-003", "status": "delivered",
+      "total_amount": "199.00", "placed_at": "2026-07-05T15:00:00+00:00", "delivered_at": "2026-07-10T15:00:00+00:00",
+      "items": [{"id": "ITEM-008", "product_name": "Laptop Stand", "category": "office", "unit_price": "199.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-009", "user_id": "USER-003", "status": "shipped",
+      "total_amount": "899.00", "placed_at": "2026-07-29T16:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-009", "product_name": "Tablet", "category": "electronics", "unit_price": "899.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-010", "user_id": "USER-003", "status": "delivered",
+      "total_amount": "199.00", "placed_at": "2026-07-08T17:00:00+00:00", "delivered_at": "2026-07-15T17:00:00+00:00",
+      "items": [{"id": "ITEM-010", "product_name": "Phone Case", "category": "accessories", "unit_price": "199.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-011", "user_id": "USER-001", "status": "paid",
+      "total_amount": "499.00", "placed_at": "2026-07-31T18:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-011", "product_name": "Webcam", "category": "electronics", "unit_price": "499.00", "quantity": 1}]
+    },
+    {
+      "id": "ORDER-012", "user_id": "USER-003", "status": "cancelled",
+      "total_amount": "199.00", "placed_at": "2026-07-12T19:00:00+00:00", "delivered_at": null,
+      "items": [{"id": "ITEM-012", "product_name": "Notebook Set", "category": "office", "unit_price": "199.00", "quantity": 1}]
+    }
+  ]
+}
