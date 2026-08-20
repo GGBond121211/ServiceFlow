@@ -1,109 +1,202 @@
-# Project-0009-ServiceFlow
+# ServiceFlow
 
-ServiceFlow 是一个使用模拟订单和售后数据构建的智能售后工单 Agent。用户用自然语言描述订单问题后，系统查询本地业务数据、匹配售后规则、调用受限业务工具，并返回可核验的处理结果。
+ServiceFlow 是一个面向模拟电商售后的单 Agent 工作流。用户用自然语言描述订单问题，系统提取意图、查询订单、匹配确定性业务规则，并通过受限业务工具更新 MySQL 中的模拟状态。
 
-## 启动检查
+一条完整的 Agent 业务闭环：
 
-- 创建日期：2026-08-09
-- 全局治理版本：`2.0.0`
-- 已阅读：`启动摘要.md`、`全局工作台.md`、`全局复利与踩坑.md`、`新项目SOP.md`
-- 任务类型：新建复杂 AI/Agent 项目
-- 当前风险等级：L0（项目初始化与规划）；后续跨文件实现为 L2
-- 适用经验：`PIT-20260807-01`、`REP-20260807-01`、`DEC-20260807-01`、`PIT-20260731-02`、`REP-20260731-02`
+```text
+自然语言请求 → 结构化意图 → Python 业务规则 → 受限工具 → 数据库事实 → 可核验回复
+```
 
-## 项目目的
+## 项目能做什么
 
-项目所有者是一名希望申请国内大厂 Agent 开发日常实习的大三计算机专业学生。本项目用于证明自己能够把 Python、FastAPI、LLM Tool Calling、LangGraph、数据库、评测和 Docker 组合成一条完整、可运行、可解释的业务流程。
+- 查询模拟订单和处理进度；
+- 取消尚未发货的订单；
+- 处理小额退款；
+- 对高金额退款创建人工审批并支持 LangGraph 中断/恢复；
+- 为换货、维修或信息不足的请求创建工单或继续追问；
+- 通过固定案例和数据库最终状态评估 Agent 是否真的完成了业务。
 
-它与 CodeInsight 的分工不同：CodeInsight 证明代码理解和 Coding Agent 能力；ServiceFlow 证明面向普通业务系统的状态管理、工具调用、数据库落地、人工审批分支和结果评测能力。
+项目中的用户、订单、金额、政策和处理结果全部是自建模拟数据，不连接真实商城、支付、物流或客户系统。
 
-## 项目基调
+## 运行时架构
 
-- 这是学生作品集和工程学习项目，不是真实商城、支付或客服生产系统。
-- 所有用户、订单、商品、政策、退款和工单数据均为项目自建的确定性模拟数据。
-- 先完成最短可运行闭环，再根据真实失败补充必要复杂度。
-- 默认一个 Agent，由 LangGraph 编排确定性业务节点；不为展示概念增加多 Agent。
-- 不建设生产级安全、鉴权、权限、风控、合规、隐私或高可用体系。
-- 不编写 Prompt 注入、越权攻击、恶意输入、漏洞扫描等安全测试。
-- 不增加重试、熔断、缓存、复杂恢复、兼容层和未来预留抽象。
-- 只保留完成业务流程必需的数据约束、状态判断、异常提示和测试。
-- 测试保护核心业务行为；Agent 评测证明任务效果，不追求覆盖率数字。
+```mermaid
+flowchart LR
+    USER["用户"] --> UI["浏览器前端\nHTML / CSS / JavaScript"]
+    UI -->|"HTTP JSON"| API["FastAPI\n8009"]
+    API --> GRAPH["LangGraph\n单 Agent"]
+    GRAPH --> LLM["兼容 Chat API 的模型\n只负责理解语言"]
+    GRAPH --> POLICY["Python 确定性业务规则"]
+    GRAPH --> TOOLS["受限业务工具"]
+    TOOLS --> DB["SQLAlchemy\nMySQL 8.4"]
+    GRAPH --> RESULT["读取最终状态\n生成回复"]
+    RESULT --> UI
+```
 
-## 预期输入与输出
+模型不能直接修改订单，也不能直接拼接 SQL。模型只输出结构化意图；是否合法、调用什么工具以及数据库最终状态，都由 Python 业务规则、应用服务和数据库共同约束。
 
-输入是一段售后请求和当前模拟用户身份，例如：
+## 三个最直观的例子
 
-> 订单 ORDER-003 的耳机买来十二天，左耳没有声音，我想换一个。
+| 用户输入 | 预期路径 | 最终结果 |
+| --- | --- | --- |
+| `ORDER-001 还没发货，帮我取消` | 查询订单 → 取消工具 | 订单变为 `cancelled` |
+| `ORDER-007 的耳机有问题，我想退款` | 查询订单 → 小额退款工具 | 订单变为 `refunded`，退款完成 |
+| `ORDER-003 的耳机有质量问题，我想退款` | 查询订单 → 创建审批 → 人工同意 → 退款 | 审批通过，退款完成，订单变为 `refunded` |
 
-系统预期完成：
+信息不完整时，Agent 应先询问缺少的订单号或业务诉求，不应凭空猜测订单，也不应在没有明确业务依据时修改数据库。
 
-1. 提取订单号、问题类型和用户诉求；
-2. 查询模拟订单与商品状态；
-3. 匹配项目内版本化售后规则；
-4. 判断需要退款、换货、取消、创建工单、补充信息或人工审批；
-5. 调用本地业务工具改变模拟数据库状态；
-6. 返回处理结论、规则依据、工具轨迹和最终业务状态。
+## 技术栈
 
-## 最终预期效果
-
-- 一个浏览器可演示的售后对话页面；
-- 一个 FastAPI HTTP JSON 后端；
-- 一个 LangGraph 单 Agent 工作流；
-- 一个 PostgreSQL 模拟售后后台；
-- Docker Compose 一条命令启动后端和数据库；
-- 40 个固定 Agent 评测案例及可重复运行的报告；
-- 可展示任务成功率、最终状态正确率、审批分支正确率、工具调用准确率、延迟和 Token 使用；
-- README、架构、评测结果和面试讲解材料与真实实现保持一致。
-
-以上全部是目标，不代表当前已经实现。
-
-## 范围与非目标
-
-V1 支持：订单查询、规则匹配、取消未发货订单、模拟退款、换货/维修工单、人工审批分支、处理结果查询、固定评测和浏览器演示。
-
-V1 不支持：真实支付、真实物流、真实电商平台、真实客户数据、用户登录、角色权限、生产安全、攻击防护、安全测试、多租户、消息队列、Redis、Kubernetes、微服务、多 Agent、向量数据库和复杂 RAG。
-
-人工审批是需要演示的业务流程节点，不作为生产安全机制宣传。订单归属、状态期限和金额判断属于业务规则，不扩展成权限或风控系统。
-
-## 技术路线
-
-- Python 3.12、`uv`、pytest、Ruff；
-- FastAPI、Pydantic、Uvicorn；
-- SQLAlchemy 2、SQLite 学习阶段、PostgreSQL 最终运行环境；
-- OpenAI-compatible 模型接口；
+- Python 3.12、FastAPI、Pydantic、Uvicorn；
 - LangGraph 单 Agent 工作流；
-- 原生 HTML/CSS/JavaScript 轻量前端；
-- Docker 与 Docker Compose。
+- SQLAlchemy 2、MySQL 8.4，SQLite 用于快速隔离测试；
+- 原生 HTML、CSS、JavaScript 前端；
+- Docker Compose 编排 FastAPI 和 MySQL；
+- pytest、Ruff 和固定 JSONL 案例评测。
 
-## 权威文档读取顺序
+## 快速启动
 
-1. `README.md`
-2. `AGENTS.md`
-3. `docs/PROJECT_CONTEXT.md`
-4. `docs/PRODUCT.md`
-5. `docs/BOUNDARIES.md`
-6. `docs/ARCHITECTURE.md`
-7. `docs/EVALUATION.md`
-8. `docs/STATUS.md`
-9. `.hermes/plans/2026-08-09_125127-serviceflow-implementation.md`
+### 1. 准备环境变量
 
-## 当前状态
+复制示例文件为本机配置文件，并在 `.env` 中填写模型配置。`.env` 已被忽略，不会进入 Git：
 
-项目处于“规划完成、尚未实现”状态。项目目录、权威文档、实施计划和跨对话交接已经初始化；没有业务代码、数据库、依赖或测试被实现。
+```powershell
+Copy-Item .env.example .env
+```
 
-新对话必须从计划中的 `Task 01` 开始，每轮只完成当前 Task 的验收范围，验证通过后更新 `docs/STATUS.md`，不要提前实现后续任务。
+### 2. 启动后端和 MySQL
 
-## 交付物索引
+```powershell
+docker compose build
+docker compose up -d
+Invoke-RestMethod http://127.0.0.1:8009/api/v1/health
+Invoke-RestMethod -Method Post http://127.0.0.1:8009/api/v1/demo/reset
+```
 
-- 产品定义：`docs/PRODUCT.md`
-- 工程边界：`docs/BOUNDARIES.md`
-- 目标架构：`docs/ARCHITECTURE.md`
-- 评测设计：`docs/EVALUATION.md`
-- 决策记录：`docs/DECISIONS.md`
-- 当前状态：`docs/STATUS.md`
-- 新对话交接：`docs/HANDOFF.md`
-- 实施计划：`.hermes/plans/2026-08-09_125127-serviceflow-implementation.md`
+### 3. 启动前端
 
-## 全局经验回写
+前端是静态文件，单独在本机启动：
 
-本轮只是初始化，没有产生新的可复用技术结论，因此没有修改全局经验库。项目沿用已记录的“最短业务闭环、失败证据驱动复杂度和仓库内分层文档”原则。
+```powershell
+python -m http.server 5173 --bind 127.0.0.1 --directory frontend
+```
+
+浏览器打开 <http://127.0.0.1:5173/>。
+
+端口关系如下：
+
+```text
+浏览器前端 127.0.0.1:5173
+        ↓ HTTP JSON
+FastAPI   127.0.0.1:8009
+        ↓ Docker 内部网络
+MySQL     宿主机 127.0.0.1:33069 / 容器内 mysql:3306
+```
+
+### 4. 停止服务
+
+```powershell
+docker compose down
+```
+
+`docker compose down` 会停止并删除容器，但默认保留 MySQL 数据卷。只有确认要清空模拟数据库时，才使用 `docker compose down -v`。
+
+## 测试与评测
+
+软件测试不需要真实模型网络，使用 Fake Model 和 SQLite：
+
+```powershell
+Set-Location backend
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+```
+
+异步全链路压力测试使用核心 40 案和复杂中文 60 案，共 100 个案例。它使用确定性的
+异步回放模型，不消耗外部模型额度；100 个逻辑用户共享同一个 FastAPI、LangGraph、
+异步 SQLAlchemy 会话工厂和数据库：
+
+```powershell
+uv run serviceflow async-stress
+```
+
+默认测试并发档位为 1、10、25、50、100。只测试指定档位时可以写成：
+
+```powershell
+uv run serviceflow async-stress --level 10 100
+```
+
+报告写入 `outputs/evaluation/serviceflow-async-pressure.json` 和
+`outputs/evaluation/serviceflow-async-pressure.md`。这个压力测试用于验证异步链路、
+数据库并发和 HTTP 业务结果；它不等价于真实模型语义质量评测，真实模型评测仍使用
+`serviceflow eval`。
+
+如果要按真实运行链路测试 Docker、MySQL 和 DeepSeek，可以运行下面的命令。这个命令
+会产生真实模型调用费用，并且会把每个案例映射到独立的临时用户和订单；测试结束后只
+清理本轮临时数据，不清理原有演示数据：
+
+```powershell
+Set-Location backend
+uv run python -m serviceflow.evaluation.real_stress `
+  --level 1 10 50 100 `
+  --output-stem serviceflow-real-deepseek-100
+```
+
+如果需要测试 300 个并发用户，可以把同一组 100 个案例重复 3 次：
+
+```powershell
+uv run python -m serviceflow.evaluation.real_stress `
+  --repeat 3 --level 300 `
+  --output-stem serviceflow-real-deepseek-300
+```
+
+真实压测要求 Docker Compose 已启动、根目录 `.env` 中存在模型配置，并且 API 容器能够
+访问 DeepSeek。报告会同时记录业务通过率、HTTP/传输错误、吞吐量、P50/P95/P99 延迟、
+模型名称和失败案例，输出到 `outputs/evaluation/`。
+
+数据库查询优化使用独立的真实 MySQL 基准，避免把大模型响应时间混入 SQL 结论：
+
+```powershell
+uv run python -m serviceflow.evaluation.database_benchmark `
+  --history-rows 2000 `
+  --noise-order-count 100 `
+  --noise-rows-per-order 180
+```
+
+它会在同一批临时 MySQL 数据上对比旧单列索引查询和新联合索引加 `LIMIT 1` 查询，记录
+`EXPLAIN`、实际返回行数、平均耗时和 P95；测试完成后自动清理临时记录。
+
+固定案例位于 [`tests/eval_cases`](tests/eval_cases)，包含核心案例和复杂中文案例。真实模型评测需要本机 `.env` 中存在模型配置，结果默认写入被 Git 忽略的 `outputs/evaluation/`，不把运行时元数据和历史报告作为公开仓库内容。
+
+## 目录结构
+
+```text
+ServiceFlow/
+├─ backend/
+│  ├─ src/serviceflow/
+│  │  ├─ domain/          # 订单、状态和业务规则
+│  │  ├─ application/     # 业务用例与副作用边界
+│  │  ├─ infrastructure/  # SQLAlchemy、数据库和种子数据
+│  │  ├─ agent/           # LangGraph、模型适配和提示词
+│  │  ├─ api/             # FastAPI HTTP JSON 接口
+│  │  └─ evaluation/      # 固定案例评测
+│  └─ tests/              # 单元、集成、API 与 Agent 测试
+├─ frontend/              # 原生浏览器前端
+├─ tests/eval_cases/      # 冻结的模拟业务案例
+├─ docs/public/           # 可公开的架构和开发说明
+├─ compose.yaml           # FastAPI + MySQL
+└─ LICENSE                # MIT License
+```
+
+
+
+更多公开说明：
+
+- [公开架构说明](docs/public/ARCHITECTURE.md)
+- [本地开发与运行](docs/public/DEVELOPMENT.md)
+- [评测说明](docs/public/EVALUATION.md)
+
+## License
+
+[MIT License](LICENSE)

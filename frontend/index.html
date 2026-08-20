@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ServiceFlow · 售后工作台</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">SF</span>
+          <div>
+            <p class="eyebrow">模拟售后业务</p>
+            <h1>ServiceFlow <span>售后工作台</span></h1>
+          </div>
+        </div>
+        <div class="topbar-meta">
+          <span class="status-dot"></span>
+          <span id="connection-status">正在连接</span>
+          <span class="version">V1 · 演示</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="workspace-grid">
+          <aside class="sidebar">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">演示上下文</p>
+                <h3>演示上下文</h3>
+              </div>
+              <button id="new-conversation" class="icon-button" title="新建会话">＋</button>
+            </div>
+
+            <label class="field-label" for="user-select">模拟用户</label>
+            <select id="user-select" class="select-field">
+              <option value="USER-001">USER-001 · Lin</option>
+              <option value="USER-002">USER-002 · Chen</option>
+              <option value="USER-003">USER-003 · Wang</option>
+            </select>
+
+            <label class="field-label" for="order-select">示例订单</label>
+            <select id="order-select" class="select-field">
+              <option value="">不指定订单</option>
+              <option value="ORDER-001">ORDER-001 · 未发货 · ¥199</option>
+              <option value="ORDER-003">ORDER-003 · 高金额 · ¥899</option>
+              <option value="ORDER-007">ORDER-007 · 已签收 · ¥499</option>
+              <option value="ORDER-008">ORDER-008 · 换货示例 · ¥199</option>
+            </select>
+
+            <div class="sidebar-divider"></div>
+            <p class="field-label">一键填充演示案例</p>
+            <div class="example-list">
+              <button class="example-button" data-order="ORDER-001" data-message="ORDER-001 还没发货，帮我取消">
+                <span class="example-icon cancel-icon">↗</span>
+                <span><strong>未发货取消</strong><small>直接处理 · POL-CANCEL-01</small></span>
+              </button>
+              <button class="example-button" data-order="ORDER-007" data-message="ORDER-007 我不想要了，申请退款">
+                <span class="example-icon refund-icon">↻</span>
+                <span><strong>小额退款</strong><small>直接处理 · POL-REFUND-01</small></span>
+              </button>
+              <button class="example-button" data-order="ORDER-003" data-message="ORDER-003 的耳机有问题，我想退款">
+                <span class="example-icon approval-icon">!</span>
+                <span><strong>高金额退款</strong><small>需要审批 · POL-APPROVAL-01</small></span>
+              </button>
+            </div>
+
+            <a
+              class="report-link"
+              href="http://127.0.0.1:8009/evaluation/serviceflow-v1-100-report.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span>↗</span> 查看 100 案评测报告
+            </a>
+          </aside>
+
+          <section class="conversation-panel">
+            <div class="conversation-header">
+              <div>
+                <p class="eyebrow">实时会话</p>
+                <h3>售后对话</h3>
+              </div>
+              <code id="thread-id">未创建会话</code>
+            </div>
+            <div id="conversation" class="conversation" aria-live="polite">
+              <div class="empty-state"><span class="empty-mark">SF</span><p>选择一个案例，或直接描述你的售后问题。</p></div>
+            </div>
+            <div id="error-message" class="error-message" hidden></div>
+            <form id="message-form" class="composer">
+              <textarea id="message-input" rows="2" placeholder="例如：ORDER-001 还没发货，帮我取消" required></textarea>
+              <button id="send-button" class="send-button" type="submit"><span>发送请求</span><b>⌘ ↵</b></button>
+            </form>
+          </section>
+
+          <aside class="inspector">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">业务状态</p>
+                <h3>业务状态</h3>
+              </div>
+              <span class="live-label">实时</span>
+            </div>
+            <div class="state-summary" id="state-summary">
+              <div class="summary-row"><span>决策</span><strong id="decision-value">—</strong></div>
+              <div class="summary-row"><span>政策</span><strong id="policy-value">—</strong></div>
+            </div>
+            <div class="state-cards">
+              <article id="order-status" class="state-card">
+                <div class="card-icon order-card-icon">□</div><div><small>订单状态</small><strong id="order-status-value">—</strong></div>
+              </article>
+              <article id="case-status" class="state-card">
+                <div class="card-icon case-card-icon">↻</div><div><small>退款 / 工单</small><strong id="case-status-value">—</strong></div>
+              </article>
+              <article id="approval-status" class="state-card">
+                <div class="card-icon approval-card-icon">!</div><div><small>人工审批</small><strong id="approval-status-value">—</strong></div>
+              </article>
+            </div>
+            <div id="approval-actions" class="approval-actions" hidden>
+              <p>这笔退款需要演示审批决定</p>
+              <div><button id="approve-button" class="approve-button" type="button">同意退款</button><button id="reject-button" class="reject-button" type="button">拒绝</button></div>
+            </div>
+
+            <div class="timeline-heading">
+              <p class="eyebrow">工具调用轨迹</p>
+              <h3>工具轨迹</h3>
+            </div>
+            <div id="tool-timeline" class="tool-timeline"><p class="muted">尚无工具事件</p></div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

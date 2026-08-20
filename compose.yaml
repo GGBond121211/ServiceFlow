@@ -1,0 +1,31 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-serviceflow}
+      MYSQL_USER: ${MYSQL_USER:-serviceflow}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-serviceflow}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-serviceflow-root}
+    ports:
+      - "33069:3306"
+    volumes:
+      - serviceflow_mysql_data:/var/lib/mysql
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - mysql
+    environment:
+      SERVICEFLOW_DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-serviceflow}:${MYSQL_PASSWORD:-serviceflow}@mysql:3306/${MYSQL_DATABASE:-serviceflow}
+      SERVICEFLOW_API_KEY: ${SERVICEFLOW_API_KEY:-}
+      SERVICEFLOW_BASE_URL: ${SERVICEFLOW_BASE_URL:-https://api.deepseek.com}
+      SERVICEFLOW_MODEL: ${SERVICEFLOW_MODEL:-deepseek-v4-flash}
+    ports:
+      - "8009:8000"
+    volumes:
+      - ./outputs/evaluation:/outputs/evaluation:ro
+
+volumes:
+  serviceflow_mysql_data:

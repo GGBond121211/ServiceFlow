@@ -1,15 +1,37 @@
+# Python 与测试缓存
 .venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-release-tmp/
+backend/.pytest-*/
 .ruff_cache/
 .coverage
 htmlcov/
-.env
-*.log
 backend/dist/
 backend/*.egg-info/
+
+# 本地配置、数据库和日志
+.env
+*.db
+*.sqlite
+*.sqlite3
+*.log
+.idea/
+.vscode/
+
+# 内部工作记录：不进入公开仓库
+AGENTS.md
+.hermes/
 work/*
 !work/.gitkeep
+启动与常用命令.txt
+
+# 公开文档只放在 docs/public/；其余 docs 是本地项目记录
+docs/*
+!docs/public/
+!docs/public/**
+
+# 评测结果在本地生成，不把运行元数据固定进仓库
 outputs/*
 !outputs/.gitkeep
