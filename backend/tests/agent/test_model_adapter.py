@@ -12,7 +12,7 @@ class FakeCompletions:
     def __init__(self) -> None:
         self.request: dict[str, object] | None = None
 
-    def create(self, **kwargs: object) -> SimpleNamespace:
+    async def create(self, **kwargs: object) -> SimpleNamespace:
         self.request = kwargs
         return SimpleNamespace(
             model="deepseek-v4-flash",
@@ -31,12 +31,13 @@ def test_missing_environment_returns_clear_configuration_error(
         OpenAICompatibleModel.from_env()
 
 
-def test_fake_client_json_maps_to_model_result() -> None:
+@pytest.mark.asyncio
+async def test_fake_client_json_maps_to_model_result() -> None:
     completions = FakeCompletions()
     fake_client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
     model = OpenAICompatibleModel(client=fake_client, model="deepseek-v4-flash")
 
-    result = model.complete_json(system="Return JSON", user="I want a refund")
+    result = await model.complete_json(system="Return JSON", user="I want a refund")
 
     assert result.content == {"intent": "refund"}
     assert result.model == "deepseek-v4-flash"

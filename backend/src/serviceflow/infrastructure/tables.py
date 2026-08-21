@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from serviceflow.infrastructure.database import Base
@@ -44,6 +44,9 @@ class OrderItemRow(Base):
 
 class RefundRow(Base):
     __tablename__ = "refunds"
+    __table_args__ = (
+        Index("ix_refunds_order_created_at", "order_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), index=True)
@@ -54,6 +57,9 @@ class RefundRow(Base):
 
 class TicketRow(Base):
     __tablename__ = "tickets"
+    __table_args__ = (
+        Index("ix_tickets_order_created_at", "order_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), index=True)
@@ -65,6 +71,9 @@ class TicketRow(Base):
 
 class ApprovalRow(Base):
     __tablename__ = "approvals"
+    __table_args__ = (
+        Index("ix_approvals_order_created_at", "order_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), index=True)

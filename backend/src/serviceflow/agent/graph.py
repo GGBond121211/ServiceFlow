@@ -4,7 +4,7 @@ from decimal import Decimal
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from serviceflow.agent.intent import IntentExtractor
 from serviceflow.agent.model import StructuredModel
@@ -32,13 +32,13 @@ class ServiceGraphNodes:
         self,
         *,
         model: StructuredModel,
-        session_factory: sessionmaker[Session],
+        session_factory: async_sessionmaker[AsyncSession],
     ) -> None:
         self._extractor = IntentExtractor(model)
         self._session_factory = session_factory
 
-    def extract_intent(self, state: AgentState) -> AgentState:
-        result = self._extractor.extract(state["user_message"])
+    async def extract_intent(self, state: AgentState) -> AgentState:
+        result = await self._extractor.extract(state["user_message"])
         token_usage = state.get("token_usage", {"input": 0, "output": 0})
         updates: AgentState = {
             "error": result.error,
@@ -86,12 +86,12 @@ class ServiceGraphNodes:
             return {"policy_id": "POL-INFO-01", "decision": Decision.ASK_FOR_INFO}
         return {}
 
-    def load_order(self, state: AgentState) -> AgentState:
+    async def load_order(self, state: AgentState) -> AgentState:
         order_id = state.get("order_id")
         if order_id is None:
             return {"error": "missing_order_id"}
-        with self._session_factory() as session:
-            order = ServiceTools(session).get_order(order_id)
+        async with self._session_factory() as session:
+            order = await ServiceTools(session).get_order(order_id)
         event_code = "order_not_found"
         if order is not None:
             event_code = "ok"
@@ -111,14 +111,14 @@ class ServiceGraphNodes:
         )
         return {"policy_id": result.policy_id, "decision": result.decision}
 
-    def execute_action(self, state: AgentState) -> AgentState:
+    async def execute_action(self, state: AgentState) -> AgentState:
         decision = state["decision"]
         order_id = state.get("order_id")
         if order_id is None or decision is Decision.EXPLAIN_ONLY:
             return {}
-        with self._session_factory() as session:
+        async with self._session_factory() as session:
             tools = ServiceTools(session)
-            result, tool_name = _execute_decision(tools, state, order_id)
+            result, tool_name = await _execute_decision(tools, state, order_id)
         if result is None:
             return {}
         case_id = None
@@ -137,24 +137,24 @@ class ServiceGraphNodes:
             updates["approval_id"] = result.case.id
         return updates
 
-    def read_final_state(self, state: AgentState) -> AgentState:
+    async def read_final_state(self, state: AgentState) -> AgentState:
         final: dict[str, object] = {}
-        with self._session_factory() as session:
+        async with self._session_factory() as session:
             tools = ServiceTools(session)
             order_id = state.get("order_id")
             order = None
             if order_id:
-                order = tools.get_order(order_id)
+                order = await tools.get_order(order_id)
             if order is not None:
                 final["order_status"] = order.status.value
             case_id = state.get("case_id")
             case_result = None
             if case_id:
-                case_result = tools.get_case_status(case_id)
+                case_result = await tools.get_case_status(case_id)
             approval_id = state.get("approval_id")
             approval_result = None
             if approval_id:
-                approval_result = tools.get_case_status(approval_id)
+                approval_result = await tools.get_case_status(approval_id)
         if case_result and case_result.case:
             case = case_result.case
             if isinstance(case, Refund):
@@ -167,7 +167,7 @@ class ServiceGraphNodes:
             final["approval_status"] = approval_result.case.status.value
         return {"final_business_state": final}
 
-    def wait_for_approval(self, state: AgentState) -> AgentState:
+    async def wait_for_approval(self, state: AgentState) -> AgentState:
         approval_id = state.get("approval_id")
         if approval_id is None:
             return {"error": "case_not_found"}
@@ -179,8 +179,11 @@ class ServiceGraphNodes:
             }
         )
         approved = bool(answer["approved"])
-        with self._session_factory() as session:
-            result = ServiceTools(session).decide_approval(approval_id, approved=approved)
+        async with self._session_factory() as session:
+            result = await ServiceTools(session).decide_approval(
+                approval_id,
+                approved=approved,
+            )
         case_id = approval_id
         if result.case is not None:
             case_id = result.case.id
@@ -213,7 +216,7 @@ class ServiceGraphNodes:
 def build_service_graph(
     *,
     model: StructuredModel,
-    session_factory: sessionmaker[Session],
+    session_factory: async_sessionmaker[AsyncSession],
     checkpointer: BaseCheckpointSaver | None = None,
 ):
     nodes = ServiceGraphNodes(model=model, session_factory=session_factory)
@@ -274,21 +277,24 @@ def _route_after_final_state(state: AgentState) -> str:
     return "compose_response"
 
 
-def _execute_decision(
+async def _execute_decision(
     tools: ServiceTools,
     state: AgentState,
     order_id: str,
 ) -> tuple[CaseResult | None, str]:
     decision = state["decision"]
     if decision is Decision.CANCEL:
-        return tools.cancel_order(order_id), "cancel_order"
+        return await tools.cancel_order(order_id), "cancel_order"
     if decision is Decision.DIRECT_REFUND:
-        return tools.request_refund(order_id), "request_refund"
+        return await tools.request_refund(order_id), "request_refund"
     if decision is Decision.APPROVAL_REQUIRED:
-        return tools.create_approval(order_id, RequestedAction.REFUND), "create_approval"
+        return (
+            await tools.create_approval(order_id, RequestedAction.REFUND),
+            "create_approval",
+        )
     if decision is Decision.CREATE_EXCHANGE_TICKET:
         return (
-            tools.create_ticket(
+            await tools.create_ticket(
                 order_id,
                 kind=TicketKind.EXCHANGE.value,
                 summary=state.get("issue_summary", "商品质量问题"),
@@ -297,7 +303,7 @@ def _execute_decision(
         )
     if decision is Decision.CREATE_SUPPORT_TICKET:
         return (
-            tools.create_ticket(
+            await tools.create_ticket(
                 order_id,
                 kind=TicketKind.SUPPORT.value,
                 summary=state.get("issue_summary", "售后支持请求"),

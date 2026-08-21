@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from serviceflow.agent.model import ModelResult
 from serviceflow.evaluation.models import EvalCase
@@ -10,7 +10,7 @@ from serviceflow.infrastructure.database import Base
 
 
 class RunnerFakeModel:
-    def complete_json(self, *, system: str, user: str) -> ModelResult:
+    async def complete_json(self, *, system: str, user: str) -> ModelResult:
         responses: dict[str, dict[str, object]] = {
             "Cancel ORDER-EVAL": _intent("ORDER-EVAL", "cancel", "none"),
             "What is the status of ORDER-EVAL?": _intent("ORDER-EVAL", "query", "none"),
@@ -26,12 +26,16 @@ class RunnerFakeModel:
         )
 
 
-def test_runner_resets_cases_handles_clarification_and_resumes_approval(
+@pytest.mark.asyncio
+async def test_runner_resets_cases_handles_clarification_and_resumes_approval(
     tmp_path: Path,
 ) -> None:
-    engine = create_engine(f"sqlite+pysqlite:///{(tmp_path / 'runner.db').as_posix()}")
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'runner.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
     cases = [
         _case(
             case_id="normal_cancel",
@@ -95,7 +99,7 @@ def test_runner_resets_cases_handles_clarification_and_resumes_approval(
         ),
     ]
 
-    run = run_evaluation(
+    run = await run_evaluation(
         cases=cases,
         model=RunnerFakeModel(),
         session_factory=factory,
@@ -115,7 +119,7 @@ def test_runner_resets_cases_handles_clarification_and_resumes_approval(
         "approval_status": "approved",
     }
     assert run.cases[3].actual_tools[-1] == "decide_approval"
-    engine.dispose()
+    await engine.dispose()
 
 
 def _intent(

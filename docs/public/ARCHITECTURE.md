@@ -55,6 +55,12 @@ model_name / prompt_version / token_usage
 
 状态不保存模型隐藏推理。LangGraph 的进程内 checkpoint 负责同一进程内的中断恢复；订单、退款、工单和审批状态以 MySQL 为业务事实来源。
 
+当前实验分支将运行链路改为异步：FastAPI 路由使用 `async def`，图调用使用
+`ainvoke` / `aget_state`，模型适配器使用异步 Chat API，数据库使用 SQLAlchemy
+`AsyncSession`，Compose 中的 MySQL 驱动为 `aiomysql`，SQLite 测试驱动为 `aiosqlite`。
+只做日期、状态和政策判断的纯 Python 函数仍保持普通同步函数，因为它们没有等待外部
+I/O 的必要。
+
 ## 4. 模型与数据库的边界
 
 ```mermaid

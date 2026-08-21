@@ -1,17 +1,22 @@
 import argparse
+import asyncio
 import json
 import subprocess
 from pathlib import Path
-
-from sqlalchemy.orm import Session
 
 from serviceflow.agent.model import OpenAICompatibleModel
 from serviceflow.evaluation.loader import DEFAULT_EVAL_PATH, load_eval_cases
 from serviceflow.evaluation.report import write_evaluation_outputs
 from serviceflow.evaluation.runner import run_evaluation
+from serviceflow.evaluation.stress import (
+    COMPLEX_EVAL_PATH,
+    DEFAULT_LEVELS,
+    run_async_pressure_test,
+    write_pressure_outputs,
+)
 from serviceflow.infrastructure.database import (
-    Base,
     create_database_engine,
+    create_database_schema,
     create_session_factory,
 )
 from serviceflow.infrastructure.repositories import OrderRepository
@@ -19,10 +24,18 @@ from serviceflow.infrastructure.seed import seed_database
 
 
 def main() -> None:
+    asyncio.run(_main())
+
+
+async def _main() -> None:
     parser = argparse.ArgumentParser(prog="serviceflow")
-    parser.add_argument("command", choices=("db-init", "seed", "show-order", "eval"))
+    parser.add_argument(
+        "command",
+        choices=("db-init", "seed", "show-order", "eval", "async-stress"),
+    )
     parser.add_argument("order_id", nargs="?")
     parser.add_argument("--cases", type=Path, nargs="+", default=[DEFAULT_EVAL_PATH])
+    parser.add_argument("--level", type=int, nargs="+", default=list(DEFAULT_LEVELS))
     parser.add_argument("--output-stem", default="serviceflow-v1")
     parser.add_argument(
         "--output",
@@ -31,18 +44,37 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.command == "async-stress":
+        cases = load_eval_cases([DEFAULT_EVAL_PATH, COMPLEX_EVAL_PATH])
+        report = await run_async_pressure_test(
+            cases=cases,
+            levels=tuple(args.level),
+        )
+        json_path, markdown_path = write_pressure_outputs(report, args.output)
+        print(
+            json.dumps(
+                {
+                    "results": str(json_path),
+                    "report": str(markdown_path),
+                    "levels": report["levels"],
+                },
+                ensure_ascii=False,
+            )
+        )
+        return
+
     engine = create_database_engine()
     if args.command == "db-init":
-        Base.metadata.create_all(engine)
+        await create_database_schema(engine)
     elif args.command == "seed":
-        Base.metadata.create_all(engine)
-        with Session(engine) as session:
-            seed_database(session)
+        await create_database_schema(engine)
+        async with create_session_factory(engine)() as session:
+            await seed_database(session)
     elif args.command == "show-order":
         if args.order_id is None:
             parser.error("show-order 命令需要提供 ORDER_ID")
-        with Session(engine) as session:
-            order = OrderRepository(session).get(args.order_id)
+        async with create_session_factory(engine)() as session:
+            order = await OrderRepository(session).get(args.order_id)
         if order is None:
             raise SystemExit("order_not_found")
         delivered_at = None
@@ -72,7 +104,7 @@ def main() -> None:
             )
         )
     elif args.command == "eval":
-        run = run_evaluation(
+        run = await run_evaluation(
             cases=load_eval_cases(args.cases),
             model=OpenAICompatibleModel.from_env(),
             session_factory=create_session_factory(engine),
@@ -93,7 +125,7 @@ def main() -> None:
                 ensure_ascii=False,
             )
         )
-    engine.dispose()
+    await engine.dispose()
 
 
 def _git_commit() -> str:

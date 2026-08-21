@@ -11,7 +11,7 @@ from serviceflow.domain.models import IssueType, RequestedAction
 class StubModel:
     content: dict[str, object]
 
-    def complete_json(self, *, system: str, user: str) -> ModelResult:
+    async def complete_json(self, *, system: str, user: str) -> ModelResult:
         assert "requested_action" in system
         assert user
         return ModelResult(
@@ -75,13 +75,14 @@ class StubModel:
         ),
     ],
 )
-def test_extracts_supported_intents(
+@pytest.mark.asyncio
+async def test_extracts_supported_intents(
     content: dict[str, object],
     expected_order: str | None,
     expected_action: RequestedAction,
     expected_issue: IssueType,
 ) -> None:
-    result = IntentExtractor(StubModel(content)).extract("demo message")
+    result = await IntentExtractor(StubModel(content)).extract("demo message")
 
     assert result.error is None
     assert result.intent is not None
@@ -94,10 +95,11 @@ def test_extracts_supported_intents(
     assert result.output_tokens == 7
 
 
-def test_invalid_model_output_returns_parse_error_without_retry() -> None:
+@pytest.mark.asyncio
+async def test_invalid_model_output_returns_parse_error_without_retry() -> None:
     model = StubModel({"requested_action": "unsupported"})
 
-    result = IntentExtractor(model).extract("do something")
+    result = await IntentExtractor(model).extract("do something")
 
     assert result.intent is None
     assert result.error == "intent_parse_error"

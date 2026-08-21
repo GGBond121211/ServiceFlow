@@ -33,8 +33,8 @@ class IntentExtractor:
         self._model = model
         self._prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    def extract(self, user_message: str) -> IntentExtractionResult:
-        model_result = self._model.complete_json(system=self._prompt, user=user_message)
+    async def extract(self, user_message: str) -> IntentExtractionResult:
+        model_result = await self._model.complete_json(system=self._prompt, user=user_message)
         try:
             intent = ParsedIntent.model_validate(model_result.content)
         except ValidationError:

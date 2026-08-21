@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from serviceflow.domain.models import (
     Approval,
@@ -19,10 +19,10 @@ CaseEntity = Refund | Ticket | Approval
 
 
 class CaseRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def create_refund(
+    async def create_refund(
         self,
         *,
         case_id: str,
@@ -39,10 +39,10 @@ class CaseRepository:
             created_at=created_at,
         )
         self._session.add(row)
-        self._session.flush()
+        await self._session.flush()
         return _refund_to_domain(row)
 
-    def create_ticket(
+    async def create_ticket(
         self,
         *,
         case_id: str,
@@ -60,10 +60,10 @@ class CaseRepository:
             created_at=created_at,
         )
         self._session.add(row)
-        self._session.flush()
+        await self._session.flush()
         return _ticket_to_domain(row)
 
-    def create_approval(
+    async def create_approval(
         self,
         *,
         case_id: str,
@@ -79,37 +79,37 @@ class CaseRepository:
             created_at=created_at,
         )
         self._session.add(row)
-        self._session.flush()
+        await self._session.flush()
         return _approval_to_domain(row)
 
-    def get(self, case_id: str) -> CaseEntity | None:
-        refund = self._session.get(RefundRow, case_id)
+    async def get(self, case_id: str) -> CaseEntity | None:
+        refund = await self._session.get(RefundRow, case_id)
         if refund is not None:
             return _refund_to_domain(refund)
-        ticket = self._session.get(TicketRow, case_id)
+        ticket = await self._session.get(TicketRow, case_id)
         if ticket is not None:
             return _ticket_to_domain(ticket)
-        approval = self._session.get(ApprovalRow, case_id)
+        approval = await self._session.get(ApprovalRow, case_id)
         if approval is not None:
             return _approval_to_domain(approval)
         return None
 
-    def get_approval(self, approval_id: str) -> Approval | None:
-        row = self._session.get(ApprovalRow, approval_id)
+    async def get_approval(self, approval_id: str) -> Approval | None:
+        row = await self._session.get(ApprovalRow, approval_id)
         if row is None:
             return None
         return _approval_to_domain(row)
 
-    def set_approval_status(
+    async def set_approval_status(
         self,
         approval_id: str,
         status: ApprovalStatus,
     ) -> Approval:
-        row = self._session.get(ApprovalRow, approval_id)
+        row = await self._session.get(ApprovalRow, approval_id)
         if row is None:
             raise LookupError("case_not_found")
         row.status = status.value
-        self._session.flush()
+        await self._session.flush()
         return _approval_to_domain(row)
 
 

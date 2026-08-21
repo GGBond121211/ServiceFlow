@@ -50,3 +50,59 @@ uv run serviceflow eval `
 ```
 
 评测输出在本地生成并被 Git 忽略。不要为了提高分数删除失败案例或修改案例期望答案；应保留失败并从意图提取、状态合并、政策判断或工具边界中寻找原因。
+
+## 异步压力测试
+
+除了逐案评测，还可以运行异步全链路压力测试：
+
+```powershell
+Set-Location backend
+uv run serviceflow async-stress
+```
+
+它把基础 40 案和复杂中文 60 案合并为 100 个逻辑用户，在 1、10、25、50、100 个并发
+档位下通过 HTTP API 顺序完成各自的多轮对话。所有用户共享一个应用、LangGraph 和
+异步数据库会话工厂；每个用户使用独立的模拟订单，避免不同案例互相修改业务事实。
+
+压力测试使用确定性的异步回放模型，重点观察异步数据库、Agent 图、审批恢复、HTTP
+接口和并发调度，不代表真实模型的语义准确率。真实模型的语义评测仍然使用上面的
+`serviceflow eval` 命令。
+
+## 真实 Docker + MySQL + DeepSeek 压力测试
+
+实验分支还提供真实运行链路的压力测试入口。它不是回放模型：请求经过 Docker 中的
+FastAPI、LangGraph、异步 SQLAlchemy 和 MySQL，Agent 再由 API 容器中的异步 DeepSeek
+模型适配器完成理解。评测器最后直接从 MySQL 重新读取订单、退款、工单和审批状态。
+
+```powershell
+Set-Location backend
+uv run python -m serviceflow.evaluation.real_stress `
+  --level 1 10 50 100 `
+  --output-stem serviceflow-real-deepseek-100
+```
+
+300 并发的运行方式是把 100 个案例重复三次，形成 300 个独立的临时用户和订单：
+
+```powershell
+uv run python -m serviceflow.evaluation.real_stress `
+  --repeat 3 --level 300 `
+  --output-stem serviceflow-real-deepseek-300
+```
+
+该命令会真实消耗模型额度。测试结束后会删除本轮创建的临时业务记录，但保留原有演示
+数据。报告额外区分 `business_mismatch`、HTTP 错误、限流、超时和传输错误，避免把
+“模型理解错了”和“服务根本没响应”混成一个失败数字。
+
+数据库改造需要用独立的 SQL 基准量化。下面的实验仍连接真实 MySQL，但不调用模型，
+这样可以把联合索引和 `LIMIT 1` 的收益从模型网络耗时中隔离出来：
+
+```powershell
+Set-Location backend
+uv run python -m serviceflow.evaluation.database_benchmark `
+  --history-rows 2000 `
+  --noise-order-count 100 `
+  --noise-rows-per-order 180
+```
+
+它在目标订单和其他订单混合的数据分布上，对比旧单列索引与新联合索引的 `EXPLAIN`、
+`Using filesort`、实际返回行数、平均耗时和 P95。实验完成后删除所有临时记录。
