@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 
 class ModelConfigurationError(RuntimeError):
@@ -23,7 +23,7 @@ class ModelResult:
 
 
 class StructuredModel(Protocol):
-    def complete_json(self, *, system: str, user: str) -> ModelResult: ...
+    async def complete_json(self, *, system: str, user: str) -> ModelResult: ...
 
 
 class OpenAICompatibleModel:
@@ -50,15 +50,15 @@ class OpenAICompatibleModel:
         if model_name is None:
             model_name = ""
         return cls(
-            client=OpenAI(
+            client=AsyncOpenAI(
                 api_key=values["SERVICEFLOW_API_KEY"],
                 base_url=values["SERVICEFLOW_BASE_URL"],
             ),
             model=model_name,
         )
 
-    def complete_json(self, *, system: str, user: str) -> ModelResult:
-        response = self._client.chat.completions.create(
+    async def complete_json(self, *, system: str, user: str) -> ModelResult:
+        response = await self._client.chat.completions.create(
             model=self._model,
             messages=[
                 {"role": "system", "content": system},

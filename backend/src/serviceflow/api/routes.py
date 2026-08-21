@@ -7,6 +7,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from serviceflow.agent.graph import DEMO_REFERENCE_DATE, build_service_graph
@@ -30,7 +31,7 @@ from serviceflow.api.schemas import (
 from serviceflow.application.case_service import CaseService
 from serviceflow.application.order_service import OrderService
 from serviceflow.domain.models import Approval, Order, Refund, Ticket
-from serviceflow.infrastructure.database import Base
+from serviceflow.infrastructure.database import ensure_database_schema
 from serviceflow.infrastructure.seed import seed_database
 from serviceflow.infrastructure.tables import OrderRow, UserRow
 
@@ -38,34 +39,42 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
+async def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
 @router.get("/orders/{order_id}", response_model=OrderResponse)
-def get_order(order_id: str, session: Session = Depends(get_session)) -> OrderResponse:
-    order = OrderService(session).get_order(order_id)
+async def get_order(
+    order_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> OrderResponse:
+    order = await OrderService(session).get_order(order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="order_not_found")
     return _order_response(order)
 
 
 @router.post("/demo/reset", response_model=ResetResponse)
-def reset_demo(session: Session = Depends(get_session)) -> ResetResponse:
-    Base.metadata.create_all(session.get_bind())
-    seed_database(session)
-    user_count = session.scalar(select(func.count()).select_from(UserRow))
+async def reset_demo(
+    session: AsyncSession = Depends(get_session),
+) -> ResetResponse:
+    await session.run_sync(_ensure_session_schema)
+    await seed_database(session)
+    user_count = await session.scalar(select(func.count()).select_from(UserRow))
     if user_count is None:
         user_count = 0
-    order_count = session.scalar(select(func.count()).select_from(OrderRow))
+    order_count = await session.scalar(select(func.count()).select_from(OrderRow))
     if order_count is None:
         order_count = 0
     return ResetResponse(users=user_count, orders=order_count)
 
 
 @router.get("/cases/{case_id}", response_model=CaseResponse)
-def get_case(case_id: str, session: Session = Depends(get_session)) -> CaseResponse:
-    result = CaseService(session).get_case_status(case_id)
+async def get_case(
+    case_id: str,
+    session: AsyncSession = Depends(get_session),
+) -> CaseResponse:
+    result = await CaseService(session).get_case_status(case_id)
     if result is None or result.case is None:
         raise HTTPException(status_code=404, detail="case_not_found")
     order = None
@@ -83,7 +92,7 @@ def get_case(case_id: str, session: Session = Depends(get_session)) -> CaseRespo
 
 
 @router.post("/conversations", response_model=ConversationResponse, status_code=201)
-def create_conversation(
+async def create_conversation(
     payload: ConversationCreateRequest,
     request: Request,
 ) -> ConversationResponse:
@@ -93,14 +102,14 @@ def create_conversation(
 
 
 @router.post("/conversations/{thread_id}/messages", response_model=ConversationResponse)
-def send_conversation_message(
+async def send_conversation_message(
     thread_id: str,
     payload: ConversationMessageRequest,
     request: Request,
 ) -> ConversationResponse:
     user_id = _conversation_user(request, thread_id)
     graph = _agent_graph(request)
-    state = graph.invoke(
+    state = await graph.ainvoke(
         {
             "thread_id": thread_id,
             "user_id": user_id,
@@ -113,12 +122,12 @@ def send_conversation_message(
 
 
 @router.get("/conversations/{thread_id}", response_model=ConversationResponse)
-def get_conversation(thread_id: str, request: Request) -> ConversationResponse:
+async def get_conversation(thread_id: str, request: Request) -> ConversationResponse:
     _conversation_user(request, thread_id)
     graph = request.app.state.agent_graph
     if graph is None:
         return _conversation_response(thread_id, {})
-    state = graph.get_state(_thread_config(thread_id)).values
+    state = (await graph.aget_state(_thread_config(thread_id))).values
     return _conversation_response(thread_id, state)
 
 
@@ -126,7 +135,7 @@ def get_conversation(thread_id: str, request: Request) -> ConversationResponse:
     "/conversations/{thread_id}/approvals/{approval_id}",
     response_model=ConversationResponse,
 )
-def decide_conversation_approval(
+async def decide_conversation_approval(
     thread_id: str,
     approval_id: str,
     payload: ApprovalDecisionRequest,
@@ -134,10 +143,10 @@ def decide_conversation_approval(
 ) -> ConversationResponse:
     _conversation_user(request, thread_id)
     graph = _agent_graph(request)
-    state = graph.get_state(_thread_config(thread_id)).values
+    state = (await graph.aget_state(_thread_config(thread_id))).values
     if state.get("approval_id") != approval_id:
         raise HTTPException(status_code=404, detail="approval_not_found")
-    resumed = graph.invoke(
+    resumed = await graph.ainvoke(
         Command(resume={"approved": payload.approved}),
         config=_thread_config(thread_id),
     )
@@ -168,6 +177,10 @@ def _order_response(order: Order) -> OrderResponse:
         delivered_at=delivered_at,
         items=items,
     )
+
+
+def _ensure_session_schema(session: Session) -> None:
+    ensure_database_schema(session.get_bind())
 
 
 def _case_type(case: Refund | Ticket | Approval) -> str:

@@ -1,8 +1,10 @@
+from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from serviceflow.agent.graph import build_service_graph
 from serviceflow.agent.model import ModelResult
@@ -19,7 +21,7 @@ class CaseModel:
     def __init__(self, content: dict[str, object]) -> None:
         self._content = content
 
-    def complete_json(self, *, system: str, user: str) -> ModelResult:
+    async def complete_json(self, *, system: str, user: str) -> ModelResult:
         return ModelResult(
             content=self._content,
             model="fake-eval-model",
@@ -28,14 +30,32 @@ class CaseModel:
         )
 
 
-def test_ten_seed_cases_follow_frozen_policy_and_tools(tmp_path: Path) -> None:
-    engine = create_engine(f"sqlite+pysqlite:///{(tmp_path / 'seed-eval.db').as_posix()}")
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
+@pytest_asyncio.fixture
+async def database(
+    tmp_path: Path,
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'seed-eval.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    yield factory
+    await engine.dispose()
 
+
+@pytest.mark.asyncio
+async def test_ten_seed_cases_follow_frozen_policy_and_tools(
+    database: async_sessionmaker[AsyncSession],
+) -> None:
     for case in load_eval_cases()[:10]:
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
-        with factory() as session:
+        async with database() as session:
+            await session.run_sync(
+                lambda sync_session: Base.metadata.drop_all(sync_session.get_bind())
+            )
+            await session.run_sync(
+                lambda sync_session: Base.metadata.create_all(sync_session.get_bind())
+            )
             session.add(UserRow(id=case.user_id, display_name="评测用户"))
             state = case.initial_state
             if state.order_id is not None:
@@ -43,8 +63,12 @@ def test_ten_seed_cases_follow_frozen_policy_and_tools(tmp_path: Path) -> None:
                 delivered_at = None
                 if state.delivered_days_ago is not None:
                     delivered_date = REFERENCE_DATE - timedelta(days=state.delivered_days_ago)
-                    delivered_at = datetime.combine(delivered_date, time(hour=10), tzinfo=UTC)
-                OrderRepository(session).add(
+                    delivered_at = datetime.combine(
+                        delivered_date,
+                        time(hour=10),
+                        tzinfo=UTC,
+                    )
+                await OrderRepository(session).add(
                     Order(
                         id=state.order_id,
                         user_id=case.user_id,
@@ -54,7 +78,7 @@ def test_ten_seed_cases_follow_frozen_policy_and_tools(tmp_path: Path) -> None:
                         delivered_at=delivered_at,
                     )
                 )
-            session.commit()
+            await session.commit()
 
         message = case.messages[0]
         missing_fields = []
@@ -77,9 +101,9 @@ def test_ten_seed_cases_follow_frozen_policy_and_tools(tmp_path: Path) -> None:
                 "missing_fields": missing_fields,
             }
         )
-        graph = build_service_graph(model=model, session_factory=factory)
+        graph = build_service_graph(model=model, session_factory=database)
 
-        result = graph.invoke(
+        result = await graph.ainvoke(
             {
                 "thread_id": case.id,
                 "user_id": case.user_id,
@@ -94,16 +118,14 @@ def test_ten_seed_cases_follow_frozen_policy_and_tools(tmp_path: Path) -> None:
         expected_final = case.expected.final_state.model_dump(mode="json", exclude_none=True)
         actual_final = dict(result.get("final_business_state", {}))
         if "order_status" in expected_final and "order_status" not in actual_final:
-            with factory() as session:
+            async with database() as session:
                 order_id = state.order_id
                 if order_id is None:
                     order_id = ""
-                saved_order = OrderRepository(session).get(order_id)
+                saved_order = await OrderRepository(session).get(order_id)
             if saved_order is not None:
                 actual_final["order_status"] = saved_order.status.value
         assert result["policy_id"] == case.expected.policy_id, case.id
         assert result["decision"] == case.expected.decision, case.id
         assert actual_tools == list(case.expected.expected_tools), case.id
         assert actual_final == expected_final, case.id
-
-    engine.dispose()

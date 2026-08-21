@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import cast
 
 from sqlalchemy import delete
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from serviceflow.infrastructure.tables import (
     ApprovalRow,
@@ -19,7 +19,10 @@ from serviceflow.infrastructure.tables import (
 DEFAULT_SEED_PATH = Path(__file__).parents[3] / "tests" / "fixtures" / "seed_data.json"
 
 
-def seed_database(session: Session, fixture_path: Path | None = None) -> None:
+async def seed_database(
+    session: AsyncSession,
+    fixture_path: Path | None = None,
+) -> None:
     seed_path = fixture_path
     if seed_path is None:
         seed_path = DEFAULT_SEED_PATH
@@ -27,12 +30,12 @@ def seed_database(session: Session, fixture_path: Path | None = None) -> None:
     users = cast(list[dict[str, object]], data["users"])
     orders = cast(list[dict[str, object]], data["orders"])
 
-    session.execute(delete(ApprovalRow))
-    session.execute(delete(TicketRow))
-    session.execute(delete(RefundRow))
-    session.execute(delete(OrderItemRow))
-    session.execute(delete(OrderRow))
-    session.execute(delete(UserRow))
+    await session.execute(delete(ApprovalRow))
+    await session.execute(delete(TicketRow))
+    await session.execute(delete(RefundRow))
+    await session.execute(delete(OrderItemRow))
+    await session.execute(delete(OrderRow))
+    await session.execute(delete(UserRow))
 
     user_rows = []
     for user in users:
@@ -40,7 +43,7 @@ def seed_database(session: Session, fixture_path: Path | None = None) -> None:
         display_name = str(user["display_name"])
         user_rows.append(UserRow(id=user_id, display_name=display_name))
     session.add_all(user_rows)
-    session.flush()
+    await session.flush()
     for order in orders:
         order_id = str(order["id"])
         items = []
@@ -65,7 +68,7 @@ def seed_database(session: Session, fixture_path: Path | None = None) -> None:
             items=items,
         )
         session.add(row)
-    session.commit()
+    await session.commit()
 
 
 def _parse_datetime(value: object) -> datetime | None:

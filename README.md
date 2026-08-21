@@ -113,6 +113,60 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
+异步全链路压力测试使用核心 40 案和复杂中文 60 案，共 100 个案例。它使用确定性的
+异步回放模型，不消耗外部模型额度；100 个逻辑用户共享同一个 FastAPI、LangGraph、
+异步 SQLAlchemy 会话工厂和数据库：
+
+```powershell
+uv run serviceflow async-stress
+```
+
+默认测试并发档位为 1、10、25、50、100。只测试指定档位时可以写成：
+
+```powershell
+uv run serviceflow async-stress --level 10 100
+```
+
+报告写入 `outputs/evaluation/serviceflow-async-pressure.json` 和
+`outputs/evaluation/serviceflow-async-pressure.md`。这个压力测试用于验证异步链路、
+数据库并发和 HTTP 业务结果；它不等价于真实模型语义质量评测，真实模型评测仍使用
+`serviceflow eval`。
+
+如果要按真实运行链路测试 Docker、MySQL 和 DeepSeek，可以运行下面的命令。这个命令
+会产生真实模型调用费用，并且会把每个案例映射到独立的临时用户和订单；测试结束后只
+清理本轮临时数据，不清理原有演示数据：
+
+```powershell
+Set-Location backend
+uv run python -m serviceflow.evaluation.real_stress `
+  --level 1 10 50 100 `
+  --output-stem serviceflow-real-deepseek-100
+```
+
+如果需要测试 300 个并发用户，可以把同一组 100 个案例重复 3 次：
+
+```powershell
+uv run python -m serviceflow.evaluation.real_stress `
+  --repeat 3 --level 300 `
+  --output-stem serviceflow-real-deepseek-300
+```
+
+真实压测要求 Docker Compose 已启动、根目录 `.env` 中存在模型配置，并且 API 容器能够
+访问 DeepSeek。报告会同时记录业务通过率、HTTP/传输错误、吞吐量、P50/P95/P99 延迟、
+模型名称和失败案例，输出到 `outputs/evaluation/`。
+
+数据库查询优化使用独立的真实 MySQL 基准，避免把大模型响应时间混入 SQL 结论：
+
+```powershell
+uv run python -m serviceflow.evaluation.database_benchmark `
+  --history-rows 2000 `
+  --noise-order-count 100 `
+  --noise-rows-per-order 180
+```
+
+它会在同一批临时 MySQL 数据上对比旧单列索引查询和新联合索引加 `LIMIT 1` 查询，记录
+`EXPLAIN`、实际返回行数、平均耗时和 P95；测试完成后自动清理临时记录。
+
 固定案例位于 [`tests/eval_cases`](tests/eval_cases)，包含核心案例和复杂中文案例。真实模型评测需要本机 `.env` 中存在模型配置，结果默认写入被 Git 忽略的 `outputs/evaluation/`，不把运行时元数据和历史报告作为公开仓库内容。
 
 ## 目录结构

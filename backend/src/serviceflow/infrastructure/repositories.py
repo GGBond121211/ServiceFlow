@@ -1,26 +1,27 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from serviceflow.domain.models import Order, OrderItem, OrderStatus
 from serviceflow.infrastructure.tables import OrderItemRow, OrderRow
 
 
 class OrderRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def get(self, order_id: str) -> Order | None:
+    async def get(self, order_id: str) -> Order | None:
         statement = (
             select(OrderRow).where(OrderRow.id == order_id).options(selectinload(OrderRow.items))
         )
-        row = self._session.scalar(statement)
+        row = await self._session.scalar(statement)
         if row is None:
             return None
         return _to_domain(row)
 
-    def add(self, order: Order) -> None:
+    async def add(self, order: Order) -> None:
         items = []
         for item in order.items:
             items.append(
@@ -44,15 +45,15 @@ class OrderRepository:
                 items=items,
             )
         )
-        self._session.flush()
+        await self._session.flush()
 
-    def set_status(self, order_id: str, status: OrderStatus) -> Order:
-        row = self._session.get(OrderRow, order_id)
+    async def set_status(self, order_id: str, status: OrderStatus) -> Order:
+        row = await self._session.get(OrderRow, order_id)
         if row is None:
             raise LookupError("order_not_found")
         row.status = status.value
-        self._session.flush()
-        updated = self.get(order_id)
+        await self._session.flush()
+        updated = await self.get(order_id)
         if updated is None:
             raise LookupError("order_not_found")
         return updated

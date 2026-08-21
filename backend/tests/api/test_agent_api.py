@@ -1,10 +1,10 @@
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from pathlib import Path
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from serviceflow.agent.model import ModelResult
 from serviceflow.api.app import create_app
@@ -13,7 +13,7 @@ from serviceflow.infrastructure.seed import seed_database
 
 
 class ApiFakeModel:
-    def complete_json(self, *, system: str, user: str) -> ModelResult:
+    async def complete_json(self, *, system: str, user: str) -> ModelResult:
         responses: dict[str, dict[str, object]] = {
             "Cancel ORDER-001": {
                 "order_id": "ORDER-001",
@@ -52,31 +52,42 @@ class ApiFakeModel:
         )
 
 
-@pytest.fixture
-def client(tmp_path: Path) -> Iterator[TestClient]:
-    engine = create_engine(f"sqlite+pysqlite:///{(tmp_path / 'agent-api.db').as_posix()}")
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    Base.metadata.create_all(engine)
-    with factory() as session:
-        seed_database(session)
+@pytest_asyncio.fixture
+async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'agent-api.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
+        await seed_database(session)
 
     application = create_app(model=ApiFakeModel(), session_factory=factory)
-    with TestClient(application) as test_client:
+    transport = httpx.ASGITransport(app=application)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://testserver",
+    ) as test_client:
         yield test_client
-    engine.dispose()
+    await engine.dispose()
 
 
-def create_conversation(client: TestClient) -> str:
-    response = client.post("/api/v1/conversations", json={"user_id": "USER-001"})
+async def create_conversation(client: httpx.AsyncClient) -> str:
+    response = await client.post(
+        "/api/v1/conversations",
+        json={"user_id": "USER-001"},
+    )
     assert response.status_code == 201
     return response.json()["thread_id"]
 
 
-def test_create_and_get_empty_conversation(client: TestClient) -> None:
-    thread_id = create_conversation(client)
+@pytest.mark.asyncio
+async def test_create_and_get_empty_conversation(client: httpx.AsyncClient) -> None:
+    thread_id = await create_conversation(client)
 
-    response = client.get(f"/api/v1/conversations/{thread_id}")
-    paths = client.get("/openapi.json").json()["paths"]
+    response = await client.get(f"/api/v1/conversations/{thread_id}")
+    paths = (await client.get("/openapi.json")).json()["paths"]
 
     assert response.status_code == 200
     assert response.json() == {
@@ -97,10 +108,13 @@ def test_create_and_get_empty_conversation(client: TestClient) -> None:
     assert "/api/v1/conversations/{thread_id}/approvals/{approval_id}" in paths
 
 
-def test_message_directly_processes_and_exposes_trace(client: TestClient) -> None:
-    thread_id = create_conversation(client)
+@pytest.mark.asyncio
+async def test_message_directly_processes_and_exposes_trace(
+    client: httpx.AsyncClient,
+) -> None:
+    thread_id = await create_conversation(client)
 
-    response = client.post(
+    response = await client.post(
         f"/api/v1/conversations/{thread_id}/messages",
         json={"message": "Cancel ORDER-001"},
     )
@@ -117,19 +131,26 @@ def test_message_directly_processes_and_exposes_trace(client: TestClient) -> Non
     assert body["model"] == "fake-api-model"
     assert body["prompt_version"] == "service_agent_v1"
     assert body["token_usage"] == {"input": 10, "output": 5}
-    assert client.get(f"/api/v1/conversations/{thread_id}").json() == body
+    assert (await client.get(f"/api/v1/conversations/{thread_id}")).json() == body
 
 
-def test_second_message_supplies_missing_order_in_same_thread(client: TestClient) -> None:
-    thread_id = create_conversation(client)
+@pytest.mark.asyncio
+async def test_second_message_supplies_missing_order_in_same_thread(
+    client: httpx.AsyncClient,
+) -> None:
+    thread_id = await create_conversation(client)
 
-    missing = client.post(
-        f"/api/v1/conversations/{thread_id}/messages",
-        json={"message": "Cancel my order"},
+    missing = (
+        await client.post(
+            f"/api/v1/conversations/{thread_id}/messages",
+            json={"message": "Cancel my order"},
+        )
     ).json()
-    completed = client.post(
-        f"/api/v1/conversations/{thread_id}/messages",
-        json={"message": "The order is ORDER-001"},
+    completed = (
+        await client.post(
+            f"/api/v1/conversations/{thread_id}/messages",
+            json={"message": "The order is ORDER-001"},
+        )
     ).json()
 
     assert missing["decision"] == "ask_for_info"
@@ -139,27 +160,30 @@ def test_second_message_supplies_missing_order_in_same_thread(client: TestClient
     assert completed["final_business_state"] == {"order_status": "cancelled"}
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("approved", "approval_status", "order_status"),
     [(True, "approved", "refunded"), (False, "rejected", "delivered")],
 )
-def test_approval_endpoint_resumes_approve_and_reject(
-    client: TestClient,
+async def test_approval_endpoint_resumes_approve_and_reject(
+    client: httpx.AsyncClient,
     approved: bool,
     approval_status: str,
     order_status: str,
 ) -> None:
-    thread_id = create_conversation(client)
-    pending = client.post(
-        f"/api/v1/conversations/{thread_id}/messages",
-        json={"message": "Refund ORDER-003"},
+    thread_id = await create_conversation(client)
+    pending = (
+        await client.post(
+            f"/api/v1/conversations/{thread_id}/messages",
+            json={"message": "Refund ORDER-003"},
+        )
     ).json()
 
     assert pending["decision"] == "approval_required"
     assert pending["approval"]["status"] == "pending"
     approval_id = pending["approval"]["id"]
 
-    response = client.post(
+    response = await client.post(
         f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
         json={"approved": approved},
     )

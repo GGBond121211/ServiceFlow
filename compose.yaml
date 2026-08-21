@@ -18,7 +18,7 @@ services:
     depends_on:
       - mysql
     environment:
-      SERVICEFLOW_DATABASE_URL: mysql+pymysql://${MYSQL_USER:-serviceflow}:${MYSQL_PASSWORD:-serviceflow}@mysql:3306/${MYSQL_DATABASE:-serviceflow}
+      SERVICEFLOW_DATABASE_URL: mysql+aiomysql://${MYSQL_USER:-serviceflow}:${MYSQL_PASSWORD:-serviceflow}@mysql:3306/${MYSQL_DATABASE:-serviceflow}
       SERVICEFLOW_API_KEY: ${SERVICEFLOW_API_KEY:-}
       SERVICEFLOW_BASE_URL: ${SERVICEFLOW_BASE_URL:-https://api.deepseek.com}
       SERVICEFLOW_MODEL: ${SERVICEFLOW_MODEL:-deepseek-v4-flash}

@@ -1,11 +1,11 @@
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from serviceflow.agent.graph import build_service_graph
 from serviceflow.agent.model import ModelResult
@@ -20,7 +20,7 @@ class MappingModel:
     def __init__(self, responses: dict[str, dict[str, object]]) -> None:
         self._responses = responses
 
-    def complete_json(self, *, system: str, user: str) -> ModelResult:
+    async def complete_json(self, *, system: str, user: str) -> ModelResult:
         return ModelResult(
             content=self._responses[user],
             model="fake-graph-model",
@@ -29,31 +29,34 @@ class MappingModel:
         )
 
 
-@pytest.fixture
-def database(tmp_path: Path) -> Iterator[sessionmaker[Session]]:
+@pytest_asyncio.fixture
+async def database(
+    tmp_path: Path,
+) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     database_path = (tmp_path / "agent.db").as_posix()
-    engine = create_engine(f"sqlite+pysqlite:///{database_path}")
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, expire_on_commit=False)
-    with factory() as session:
+    engine = create_async_engine(f"sqlite+aiosqlite:///{database_path}")
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
         session.add(UserRow(id="USER-001", display_name="Demo User"))
-        session.commit()
+        await session.commit()
     yield factory
-    engine.dispose()
+    await engine.dispose()
 
 
-def add_order(
-    factory: sessionmaker[Session],
+async def add_order(
+    factory: async_sessionmaker[AsyncSession],
     *,
     order_id: str,
     status: OrderStatus,
     amount: str,
 ) -> None:
-    with factory() as session:
+    async with factory() as session:
         delivered_at = None
         if status is OrderStatus.DELIVERED:
             delivered_at = datetime(2026, 7, 30, tzinfo=UTC)
-        OrderRepository(session).add(
+        await OrderRepository(session).add(
             Order(
                 id=order_id,
                 user_id="USER-001",
@@ -63,11 +66,11 @@ def add_order(
                 delivered_at=delivered_at,
             )
         )
-        session.commit()
+        await session.commit()
 
 
-def invoke_graph(
-    factory: sessionmaker[Session],
+async def invoke_graph(
+    factory: async_sessionmaker[AsyncSession],
     *,
     message: str,
     intent: dict[str, object],
@@ -76,7 +79,7 @@ def invoke_graph(
         model=MappingModel({message: intent}),
         session_factory=factory,
     )
-    return graph.invoke(
+    return await graph.ainvoke(
         {
             "thread_id": message,
             "user_id": "USER-001",
@@ -86,11 +89,14 @@ def invoke_graph(
     )
 
 
-def test_paid_order_cancellation_reaches_database(database: sessionmaker[Session]) -> None:
-    add_order(database, order_id="ORDER-001", status=OrderStatus.PAID, amount="199.00")
+@pytest.mark.asyncio
+async def test_paid_order_cancellation_reaches_database(
+    database: async_sessionmaker[AsyncSession],
+) -> None:
+    await add_order(database, order_id="ORDER-001", status=OrderStatus.PAID, amount="199.00")
     message = "Cancel ORDER-001"
 
-    result = invoke_graph(
+    result = await invoke_graph(
         database,
         message=message,
         intent={
@@ -102,19 +108,20 @@ def test_paid_order_cancellation_reaches_database(database: sessionmaker[Session
         },
     )
 
-    with database() as session:
-        saved = OrderRepository(session).get("ORDER-001")
+    async with database() as session:
+        saved = await OrderRepository(session).get("ORDER-001")
     assert result["decision"] is Decision.CANCEL
     assert saved is not None and saved.status is OrderStatus.CANCELLED
 
 
-def test_small_refund_and_exchange_execute_correct_tools(
-    database: sessionmaker[Session],
+@pytest.mark.asyncio
+async def test_small_refund_and_exchange_execute_correct_tools(
+    database: async_sessionmaker[AsyncSession],
 ) -> None:
-    add_order(database, order_id="ORDER-002", status=OrderStatus.DELIVERED, amount="199.00")
-    add_order(database, order_id="ORDER-003", status=OrderStatus.DELIVERED, amount="499.00")
+    await add_order(database, order_id="ORDER-002", status=OrderStatus.DELIVERED, amount="199.00")
+    await add_order(database, order_id="ORDER-003", status=OrderStatus.DELIVERED, amount="499.00")
 
-    refund = invoke_graph(
+    refund = await invoke_graph(
         database,
         message="Refund ORDER-002",
         intent={
@@ -125,7 +132,7 @@ def test_small_refund_and_exchange_execute_correct_tools(
             "missing_fields": [],
         },
     )
-    exchange = invoke_graph(
+    exchange = await invoke_graph(
         database,
         message="Exchange ORDER-003",
         intent={
@@ -143,8 +150,11 @@ def test_small_refund_and_exchange_execute_correct_tools(
     assert exchange["tool_events"][-1]["tool"] == "create_ticket"
 
 
-def test_missing_order_id_only_returns_clarification(database: sessionmaker[Session]) -> None:
-    result = invoke_graph(
+@pytest.mark.asyncio
+async def test_missing_order_id_only_returns_clarification(
+    database: async_sessionmaker[AsyncSession],
+) -> None:
+    result = await invoke_graph(
         database,
         message="My headphones are broken",
         intent={

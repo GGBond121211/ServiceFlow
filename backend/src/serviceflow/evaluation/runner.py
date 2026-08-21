@@ -6,7 +6,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from serviceflow.agent.graph import build_service_graph
 from serviceflow.agent.intent import PROMPT_VERSION
@@ -93,16 +93,16 @@ class EvaluationRun(BaseModel):
     cases: list[CaseEvaluation]
 
 
-def run_evaluation(
+async def run_evaluation(
     *,
     cases: Sequence[EvalCase],
     model: StructuredModel,
-    session_factory: sessionmaker[Session],
+    session_factory: async_sessionmaker[AsyncSession],
     commit: str,
 ) -> EvaluationRun:
     results = []
     for case in cases:
-        results.append(_run_case(case=case, model=model, session_factory=session_factory))
+        results.append(await _run_case(case=case, model=model, session_factory=session_factory))
 
     models = set()
     for result in results:
@@ -189,17 +189,17 @@ def calculate_group_summaries(
     return groups
 
 
-def _run_case(
+async def _run_case(
     *,
     case: EvalCase,
     model: StructuredModel,
-    session_factory: sessionmaker[Session],
+    session_factory: async_sessionmaker[AsyncSession],
 ) -> CaseEvaluation:
     started = perf_counter()
     states: list[dict[str, object]] = []
     error: str | None = None
     try:
-        _reset_case_database(case, session_factory)
+        await _reset_case_database(case, session_factory)
         graph = build_service_graph(
             model=model,
             session_factory=session_factory,
@@ -207,7 +207,7 @@ def _run_case(
         )
         config = {"configurable": {"thread_id": case.id}}
         for message in case.messages:
-            state = graph.invoke(
+            state = await graph.ainvoke(
                 {
                     "thread_id": case.id,
                     "user_id": case.user_id,
@@ -220,7 +220,7 @@ def _run_case(
 
         approval_decision = _approval_decision(case)
         if approval_decision is not None and _approval_is_pending(states[-1]):
-            state = graph.invoke(
+            state = await graph.ainvoke(
                 Command(resume={"approved": approval_decision}),
                 config=config,
             )
@@ -231,7 +231,7 @@ def _run_case(
     final = {}
     if states:
         final = states[-1]
-    actual_final_state = _read_final_state(case, session_factory)
+    actual_final_state = await _read_final_state(case, session_factory)
     expected_final_state = case.expected.final_state.model_dump(mode="json", exclude_none=True)
     actual_decision = _text(final.get("decision"))
     actual_policy = _text(final.get("policy_id"))
@@ -289,15 +289,17 @@ def _run_case(
     )
 
 
-def _reset_case_database(
+async def _reset_case_database(
     case: EvalCase,
-    session_factory: sessionmaker[Session],
+    session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    with session_factory() as session:
-        bind = session.get_bind()
-    Base.metadata.drop_all(bind)
-    Base.metadata.create_all(bind)
-    with session_factory() as session:
+    async with session_factory() as session:
+        await session.run_sync(
+            lambda sync_session: Base.metadata.drop_all(sync_session.get_bind())
+        )
+        await session.run_sync(
+            lambda sync_session: Base.metadata.create_all(sync_session.get_bind())
+        )
         session.add(UserRow(id=case.user_id, display_name="评测用户"))
         state = case.initial_state
         if state.order_id is not None:
@@ -307,7 +309,7 @@ def _reset_case_database(
             if state.delivered_days_ago is not None:
                 delivered_date = REFERENCE_DATE - timedelta(days=state.delivered_days_ago)
                 delivered_at = datetime.combine(delivered_date, time(hour=10), tzinfo=UTC)
-            OrderRepository(session).add(
+            await OrderRepository(session).add(
                 Order(
                     id=state.order_id,
                     user_id=case.user_id,
@@ -317,36 +319,39 @@ def _reset_case_database(
                     delivered_at=delivered_at,
                 )
             )
-        session.commit()
+        await session.commit()
 
 
-def _read_final_state(
+async def _read_final_state(
     case: EvalCase,
-    session_factory: sessionmaker[Session],
+    session_factory: async_sessionmaker[AsyncSession],
 ) -> dict[str, str]:
     order_id = case.initial_state.order_id
     if order_id is None:
         return {}
     final: dict[str, str] = {}
-    with session_factory() as session:
-        order = OrderRepository(session).get(order_id)
+    async with session_factory() as session:
+        order = await OrderRepository(session).get(order_id)
         if order is not None:
             final["order_status"] = order.status.value
-        refund = session.scalars(
+        refund = await session.scalar(
             select(RefundRow)
             .where(RefundRow.order_id == order_id)
             .order_by(RefundRow.created_at.desc())
-        ).first()
-        ticket = session.scalars(
+            .limit(1)
+        )
+        ticket = await session.scalar(
             select(TicketRow)
             .where(TicketRow.order_id == order_id)
             .order_by(TicketRow.created_at.desc())
-        ).first()
-        approval = session.scalars(
+            .limit(1)
+        )
+        approval = await session.scalar(
             select(ApprovalRow)
             .where(ApprovalRow.order_id == order_id)
             .order_by(ApprovalRow.created_at.desc())
-        ).first()
+            .limit(1)
+        )
     if refund is not None:
         final["refund_status"] = refund.status
     if approval is not None:

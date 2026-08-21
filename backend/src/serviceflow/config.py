@@ -1,6 +1,6 @@
 import os
 
-DEFAULT_DATABASE_URL = "sqlite+pysqlite:///serviceflow.db"
+DEFAULT_DATABASE_URL = "sqlite+aiosqlite:///serviceflow.db"
 
 
 def get_database_url() -> str:
