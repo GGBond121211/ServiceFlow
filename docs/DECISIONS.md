@@ -28,15 +28,15 @@
 
 - 日期：2026-08-09
 - 状态：已接受
-- 决策：领域和仓储先通过 SQLite 快速测试，再使用 SQLAlchemy 切换到 PostgreSQL；最终演示必须使用 PostgreSQL。
+- 决策：领域和仓储先通过 SQLite 快速测试，再使用 SQLAlchemy 切换到 MySQL；最终演示使用 MySQL。
 - 原因：降低首次学习数据库和 Agent 业务逻辑同时出现的认知负担。
-- 权衡：需要保留一个 PostgreSQL 集成验证，避免只在 SQLite 上通过。
+- 权衡：需要保留一个 MySQL 集成验证，避免只在 SQLite 上通过。
 
 ## DEC-0005｜Docker Compose 最终只包含两个服务
 
 - 日期：2026-08-09
 - 状态：已接受
-- 决策：最终 Compose 只启动 FastAPI 和 PostgreSQL。前端使用静态文件服务器，不增加 Redis、Nginx、消息队列或 Kubernetes。
+- 决策：最终 Compose 只启动 FastAPI 和 MySQL。前端使用静态文件服务器，不增加 Redis、Nginx、消息队列或 Kubernetes。
 - 原因：两服务已经足以证明容器化和数据库联动，继续扩展没有当前用户价值。
 
 ## DEC-0006｜评测以数据库最终状态为主

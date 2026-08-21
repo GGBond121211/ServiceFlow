@@ -54,6 +54,21 @@ COMPLEX_EVAL_PATH = (
 )
 DEFAULT_LEVELS = (1, 10, 50, 100)
 ORDER_PATTERN = re.compile(r"ORDER-\d+")
+TIMING_DISPLAY_NAMES = {
+    "round_trip_ms": "客户端 HTTP 往返",
+    "network_client_ms": "往返减服务端（网络/传输/客户端调度）",
+    "server_ms": "FastAPI 服务端总耗时",
+    "graph_ms": "LangGraph 执行",
+    "model_call_ms": "模型完整调用",
+    "intent_total_ms": "意图提取总耗时",
+    "database_connection_ms": "等待数据库连接",
+    "sql_execute_ms": "SQL 执行",
+    "database_phase_ms": "数据库阶段总耗时",
+    "policy_ms": "业务规则",
+    "response_compose_ms": "Agent 回复组装",
+    "response_build_ms": "API 响应对象组装",
+    "graph_state_ms": "LangGraph 状态读取",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +81,12 @@ class Scenario:
     order_id_map: dict[str, str]
 
 
+@dataclass(frozen=True, slots=True)
+class HttpObservation:
+    response: httpx.Response
+    timings_ms: dict[str, float]
+
+
 @dataclass(slots=True)
 class ScenarioRun:
     scenario: Scenario
@@ -76,6 +97,7 @@ class ScenarioRun:
     error_category: str | None
     error: str | None
     actual_final_state: dict[str, str]
+    request_timings_ms: list[dict[str, float]]
     passed: bool = False
     business_mismatch: str | None = None
 
@@ -198,6 +220,7 @@ async def _run_scenario(
     final_response: dict[str, object] | None = None
     error_category: str | None = None
     error: str | None = None
+    request_timings_ms: list[dict[str, float]] = []
     async with semaphore:
         started = perf_counter()
         async with active_lock:
@@ -205,23 +228,25 @@ async def _run_scenario(
             if active_state["value"] > peak_state["value"]:
                 peak_state["value"] = active_state["value"]
         try:
-            response = await _post_json(
+            observation = await _post_json(
                 client,
                 "/api/v1/conversations",
                 {"user_id": scenario.user_id},
             )
             request_count += 1
-            conversation = _require_success(response)
+            request_timings_ms.append(observation.timings_ms)
+            conversation = _require_success(observation.response)
             thread_id = str(conversation["thread_id"])
 
             for message in scenario.messages:
-                response = await _post_json(
+                observation = await _post_json(
                     client,
                     f"/api/v1/conversations/{thread_id}/messages",
                     {"message": message},
                 )
                 request_count += 1
-                conversation = _require_success(response)
+                request_timings_ms.append(observation.timings_ms)
+                conversation = _require_success(observation.response)
                 if first_decision is None:
                     first_decision = _optional_text(conversation.get("decision"))
                 final_response = conversation
@@ -231,13 +256,14 @@ async def _run_scenario(
                     if not isinstance(approval, dict):
                         raise RuntimeError("响应缺少待审批信息")
                     approval_id = approval.get("id")
-                    response = await _post_json(
+                    observation = await _post_json(
                         client,
                         f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
                         {"approved": scenario.case.approval_decision},
                     )
                     request_count += 1
-                    conversation = _require_success(response)
+                    request_timings_ms.append(observation.timings_ms)
+                    conversation = _require_success(observation.response)
                     final_response = conversation
         except _HttpRequestError as exc:
             error_category = exc.category
@@ -258,6 +284,7 @@ async def _run_scenario(
         error_category=error_category,
         error=error,
         actual_final_state={},
+        request_timings_ms=request_timings_ms,
     )
 
 
@@ -265,13 +292,40 @@ async def _post_json(
     client: httpx.AsyncClient,
     path: str,
     payload: dict[str, object],
-) -> httpx.Response:
+) -> HttpObservation:
+    started_at = perf_counter()
     try:
-        return await client.post(path, json=payload)
+        response = await client.post(path, json=payload)
     except httpx.TimeoutException as exc:
         raise _HttpRequestError("timeout", f"请求超时：{exc}") from exc
     except httpx.TransportError as exc:
         raise _HttpRequestError("transport_error", f"网络传输失败：{exc}") from exc
+    round_trip_ms = (perf_counter() - started_at) * 1000
+    timings_ms = _parse_server_timing(response.headers.get("server-timing", ""))
+    timings_ms["round_trip_ms"] = round(round_trip_ms, 3)
+    server_ms = timings_ms.get("server_ms")
+    if server_ms is not None:
+        network_client_ms = max(round_trip_ms - server_ms, 0.0)
+        timings_ms["network_client_ms"] = round(network_client_ms, 3)
+    return HttpObservation(response=response, timings_ms=timings_ms)
+
+
+def _parse_server_timing(value: str) -> dict[str, float]:
+    timings: dict[str, float] = {}
+    for item in value.split(","):
+        fields = item.strip().split(";")
+        if not fields or not fields[0]:
+            continue
+        name = fields[0]
+        for field in fields[1:]:
+            field = field.strip()
+            if not field.startswith("dur="):
+                continue
+            try:
+                timings[name] = float(field.removeprefix("dur="))
+            except ValueError:
+                pass
+    return timings
 
 
 def _require_success(response: httpx.Response) -> dict[str, object]:
@@ -468,6 +522,7 @@ def _level_report(
     category_counts: dict[str, int] = {}
     failures = []
     models = []
+    timing_values: dict[str, list[float]] = {}
     for scenario_run in scenario_runs:
         latencies.append(scenario_run.latency_ms)
         request_count += scenario_run.request_count
@@ -490,6 +545,10 @@ def _level_report(
             model_name = _optional_text(scenario_run.final_response.get("model"))
             if model_name is not None and model_name not in models:
                 models.append(model_name)
+        for request_timings in scenario_run.request_timings_ms:
+            for name, duration_ms in request_timings.items():
+                values = timing_values.setdefault(name, [])
+                values.append(duration_ms)
 
     total = len(scenario_runs)
     return {
@@ -516,6 +575,7 @@ def _level_report(
         "peak_users": peak_users,
         "error_categories": category_counts,
         "models_seen": models,
+        "phase_timing_ms": _phase_timing_report(timing_values),
         "failures": failures,
     }
 
@@ -616,6 +676,24 @@ def _percentile(values: list[float], percentile: int) -> float:
     return ordered[rank - 1]
 
 
+def _phase_timing_report(
+    timing_values: dict[str, list[float]],
+) -> dict[str, dict[str, float | int]]:
+    report: dict[str, dict[str, float | int]] = {}
+    for name, values in timing_values.items():
+        if not values:
+            continue
+        report[name] = {
+            "samples": len(values),
+            "total": round(sum(values), 2),
+            "average": round(sum(values) / len(values), 2),
+            "p50": round(_percentile(values, 50), 2),
+            "p95": round(_percentile(values, 95), 2),
+            "max": round(_percentile(values, 100), 2),
+        }
+    return report
+
+
 def load_env_value(name: str, env_path: Path) -> str | None:
     value = os.getenv(name)
     if value:
@@ -675,6 +753,7 @@ def _markdown_report(report: dict[str, object]) -> str:
         "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     error_sections = []
+    timing_sections = []
     levels = report.get("levels", [])
     if isinstance(levels, list):
         for level in levels:
@@ -705,11 +784,43 @@ def _markdown_report(report: dict[str, object]) -> str:
                     json.dumps(level.get("error_categories", {}), ensure_ascii=False),
                 )
             )
+            timing_sections.append(
+                (
+                    level.get("concurrency"),
+                    level.get("phase_timing_ms", {}),
+                )
+            )
     if error_sections:
         lines.append("")
         for concurrency, error_categories in error_sections:
             lines.append(f"并发 {concurrency} 的错误分类：")
             lines.append(f"`{error_categories}`")
+    for concurrency, phase_timings in timing_sections:
+        if not isinstance(phase_timings, dict):
+            continue
+        lines.extend(
+            [
+                "",
+                f"### 并发 {concurrency} 的分阶段耗时",
+                "",
+                "| 阶段 | 样本数 | 平均 ms | P50 ms | P95 ms | 最大 ms |",
+                "| --- | ---: | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for name in TIMING_DISPLAY_NAMES:
+            summary = phase_timings.get(name)
+            if not isinstance(summary, dict):
+                continue
+            lines.append(
+                "| {label} | {samples} | {average} | {p50} | {p95} | {maximum} |".format(
+                    label=TIMING_DISPLAY_NAMES[name],
+                    samples=summary.get("samples"),
+                    average=summary.get("average"),
+                    p50=summary.get("p50"),
+                    p95=summary.get("p95"),
+                    maximum=summary.get("max"),
+                )
+            )
     lines.extend(
         [
             "",

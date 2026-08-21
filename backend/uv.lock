@@ -782,6 +782,7 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "cryptography" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "langgraph" },
     { name = "openai" },
     { name = "pydantic" },
@@ -791,7 +792,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -803,6 +803,7 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.21,<1" },
     { name = "cryptography", specifier = ">=43,<47" },
     { name = "fastapi", specifier = ">=0.116,<1" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "langgraph", specifier = ">=0.6,<2" },
     { name = "openai", specifier = ">=2,<3" },
     { name = "pydantic", specifier = ">=2.11,<3" },
@@ -812,7 +813,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "pytest", specifier = ">=8.4,<10" },
     { name = "pytest-asyncio", specifier = ">=1,<2" },
     { name = "ruff", specifier = ">=0.12,<1" },

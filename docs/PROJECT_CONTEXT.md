@@ -13,7 +13,7 @@ ServiceFlow 作为第二项目，需要避免再次做代码理解或通用知�
 1. 能否把自然语言请求映射为结构化业务意图？
 2. 能否让 Agent 查询数据库并调用业务工具，而不是只生成文字？
 3. 能否用 LangGraph 表达补充信息、规则判断、审批和执行分支？
-4. 能否使用 PostgreSQL 保存订单、工单、退款和会话状态？
+4. 能否使用 MySQL 保存订单、工单、退款和会话状态？
 5. 能否用 FastAPI 暴露清晰的 HTTP JSON 接口？
 6. 能否使用 Docker Compose 让他人一条命令启动演示环境？
 7. 能否用固定案例和最终数据库状态量化 Agent 效果？
@@ -36,7 +36,7 @@ ServiceFlow 作为第二项目，需要避免再次做代码理解或通用知�
 
 演示控制在五分钟内：
 
-1. 用 Docker Compose 启动 API 和 PostgreSQL；
+1. 用 Docker Compose 启动 API 和 MySQL；
 2. 打开浏览器售后页面；
 3. 输入一个可直接处理的取消订单请求；
 4. 输入一个需要人工审批的高金额退款请求；
@@ -45,7 +45,7 @@ ServiceFlow 作为第二项目，需要避免再次做代码理解或通用知�
 
 ## 5. 学习目标
 
-- 掌握 PostgreSQL 在普通 Python 后端中的基本使用；
+- 掌握 MySQL 在普通 Python 后端中的基本使用；
 - 理解 SQLAlchemy 模型、Session、事务和仓储实现；
 - 掌握 Dockerfile 与 Docker Compose 的基本职责；
 - 巩固 FastAPI、Pydantic、pytest 和 Ruff；
@@ -54,4 +54,4 @@ ServiceFlow 作为第二项目，需要避免再次做代码理解或通用知�
 
 ## 6. 工期与完成标准
 
-建议按 Task 顺序在 6 至 8 周内完成。项目不以代码量或测试覆盖率为目标；当核心流程、40 案评测、浏览器演示、Docker Compose 和作品集文档全部通过验收时停止。
+建议按 Task 顺序在 6 至 8 周内完成。项目不以代码量或测试覆盖率为目标；第一阶段最终使用核心40案与复杂中文60案共100案评测，并以核心流程、浏览器演示、Docker Compose 和作品集文档的真实证据作为验收依据。

@@ -1,64 +1,59 @@
-# 新对话交接
+# ServiceFlow V1 维护入口
 
 ## 1. 当前事实
 
 - 项目目录：`C:\Users\Alex\Desktop\workspace\Project-0009-ServiceFlow`
-- 项目已完成初始化和规划，没有实现任何业务代码。
-- 当前完成点：Task 00。
-- 下一步：实施计划中的 Task 01。
-- 项目所有数据和政策均为模拟内容。
-- 项目目标是本科生 Agent 开发实习作品集，不是生产系统。
+- V1 的 Task 00—17 已完成，当前没有下一实施 Task。
+- 项目是本科生 Agent 开发实习作品集，所有用户、订单、金额、政策和处理结果均为模拟内容。
+- 核心业务、Agent、API、MySQL、Compose、浏览器页面和100案评测均有真实验证证据。
+- V1 停止点已达到，不继续增加多 Agent、Redis、向量数据库、安全体系或计划外基础设施。
 
-## 2. 新对话必须读取
+## 2. 维护时读取顺序
 
 1. `README.md`
 2. `AGENTS.md`
 3. `docs/STATUS.md`
-4. `docs/PROJECT_CONTEXT.md`
-5. `docs/BOUNDARIES.md`
-6. 当前 Task 涉及的文档
-7. `.hermes/plans/2026-08-09_125127-serviceflow-implementation.md` 中的当前 Task
+4. 本文件
+5. `docs/DEVELOPMENT.md`
+6. 与变更直接相关的产品、架构、评测或边界文档
+7. 与变更直接相关的代码和测试
 
-不要依赖旧聊天记录推断项目状态。
+不要依赖聊天记录推断状态，也不要把旧实施计划中的目标当成当前未完成事项。
 
-## 3. 每个 Task 的执行协议
+## 3. 已冻结证据
 
-1. 先确认 `docs/STATUS.md` 中唯一的下一 Task；
-2. 只读取和修改该 Task 列出的文件；
-3. 先写能证明该业务行为的失败测试；
-4. 运行最窄测试确认失败原因正确；
-5. 实现最小代码；
-6. 运行当前测试、相关回归和 Ruff；
-7. 只更新因真实行为变化而过时的文档；
-8. 更新 `docs/STATUS.md` 的完成项、验证结果和下一 Task；
-9. 达到当前 Task 验收条件后停止，不提前实现后续 Task。
+- 全量软件测试：连接 Compose MySQL 后 `59 passed`，仅有 1 条既有迁移警告；
+- Ruff 与格式：通过，51 个文件格式正确；
+- Compose：`mysql` 与 `api` 两个服务构建和运行成功；
+- HTTP：health、demo reset、ORDER-001 查询成功；
+- 浏览器：取消、小额退款、高金额审批退款三条流程成功；
+- MySQL：高金额流程最终为订单 `refunded`、退款 `completed`、审批 `approved`；
+- 真实评测：40/40 执行，Outcome 95.00%、Final State 97.50%、Policy 95.00%、Tool 97.50%、Clarification 83.33%；
+- 失败案例：`refund_high_rejected_001`、`clarify_exchange_order_001`，均保留在完整报告中。
+- 第一阶段扩展评测：核心40案加复杂中文60案，100/100执行；总体 Outcome 95.00%、Final State 98.00%、Policy 95.00%、Tool 98.00%、Clarification 91.67%。
+- 难度差异：核心40案 Outcome 97.50%，复杂中文60案 Outcome 93.33%；复杂分区4条失败集中于单句主诉求选择、否定后的问题类型和多轮问题类型保留，完整证据未删改。
 
-如果工作树已有用户修改，必须保留并绕开，不得重置。
+## 4. 运行入口
 
-## 4. 项目特别边界
+- 开发、测试、Compose、评测和 Docker 排障：`docs/DEVELOPMENT.md`
+- 架构与状态边界：`docs/ARCHITECTURE.md`
+- 评测方法和真实结果：`docs/EVALUATION.md`
+- 作品集、简历 bullet 和面试问题：`docs/PORTFOLIO.md`
+- 完整结果：`outputs/evaluation/serviceflow-v1-results.json`
+- 可读报告：`outputs/evaluation/serviceflow-v1-report.md`
+- 当前100案结果：`outputs/evaluation/serviceflow-v1-100-results.json`
+- 当前100案报告：`outputs/evaluation/serviceflow-v1-100-report.md`
 
-- 不增加安全、防攻击、权限、风控和安全测试；
-- 不增加重试、熔断、缓存、复杂恢复和高可用；
-- 不把普通业务状态判断误写成生产安全体系；
-- 不增加多 Agent、Redis、消息队列、Kubernetes、向量数据库和复杂 RAG；
-- 不把计划写成已完成事实；
-- 不接真实订单、支付、物流和客户数据；
-- 不为尚未实现的 Prompt 创建注册表或多个版本。
+## 5. 后续变更协议
 
-## 5. 给新对话的推荐首条消息
+V1 已结束。若用户提出新功能，先判断它是：
 
-```text
-请读取当前 Project-0009-ServiceFlow 的 README.md、AGENTS.md、docs/STATUS.md、docs/HANDOFF.md 和详细实施计划。按照计划只执行当前的 Task 01，完成测试和最窄验证后更新 STATUS 并停止，不要提前实施 Task 02，也不要加入安全、防御性代码或计划外基础设施。
-```
+- 对 V1 的明确缺陷修复：写失败测试，做最小修复和相关回归；
+- 文档或演示维护：只更新真实过时内容；
+- 新产品阶段：先重新定义范围、风险、Task 和验收条件，不能直接沿用已完成的 Task 17。
 
-后续每次可以把 `Task 01` 替换成 `docs/STATUS.md` 记录的下一 Task。
+继续保留以下边界：不接真实支付、物流、商城和客户数据；不增加登录、权限、生产安全、风控、安全测试、重试、缓存、Redis、消息队列、Kubernetes、多 Agent、向量数据库和复杂 RAG。
 
-## 6. 项目完成时需要展示的证据
+## 6. 当前运行状态
 
-- 三条浏览器端到端流程；
-- PostgreSQL 中可核验的最终业务状态；
-- LangGraph 真实条件分支和审批恢复；
-- 40 案固定评测报告；
-- Docker Compose 启动方式；
-- 真实失败案例和限制；
-- 两个简历项目之间的能力互补说明。
+Task 17 最终验收完成后，Compose 容器和临时前端服务器均应停止；MySQL 数据卷保留。模型密钥只存在于用户环境变量，不在仓库中。

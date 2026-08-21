@@ -32,6 +32,8 @@ ORDER-003 的耳机有质量问题，我想退款。
 - 当前订单、退款、工单或审批状态；
 - 若信息不足，返回一个明确的补充问题。
 
+完整输入输出示例、决策图和审批时序见 `docs/USER_FLOW.md`。
+
 ## 5. 核心用户故事
 
 ### US-01 查询订单
@@ -68,6 +70,7 @@ ORDER-003 的耳机有质量问题，我想退款。
 
 | 规则 ID | 条件 | 结果 |
 |---|---|---|
+| `POL-QUERY-01` | 用户只查询订单或处理状态 | 返回当前信息，不改变业务状态 |
 | `POL-CANCEL-01` | 订单状态为 `paid` | 允许取消，状态变为 `cancelled` |
 | `POL-REFUND-01` | 普通商品已签收且不超过 7 天 | 允许模拟退款 |
 | `POL-EXCHANGE-01` | 质量问题且签收不超过 30 天 | 创建换货工单 |
@@ -82,7 +85,7 @@ ORDER-003 的耳机有质量问题，我想退款。
 ```text
 paid -> cancelled
 shipped -> delivered
-delivered -> refund_pending -> refunded
+delivered -> refunded
 delivered -> ticket_open
 ```
 
@@ -108,8 +111,8 @@ V1 演示创建和查询工单，不实现复杂客服处理后台。
 - 三条代表流程可从浏览器端到端完成：取消、直接退款、审批后退款；
 - 信息不足时能够继续询问并恢复同一会话；
 - 最终业务状态可通过 API 和数据库核验；
-- 40 个固定 Agent 案例可以自动执行并生成报告；
-- Docker Compose 可启动 API 与 PostgreSQL；
+- 100 个固定 Agent 案例可以自动执行并生成总体、核心40案和复杂中文60案报告；
+- Docker Compose 可启动 API 与 MySQL；
 - 项目说明能够诚实区分模拟数据、规划目标和真实结果。
 
 ## 9. 非目标

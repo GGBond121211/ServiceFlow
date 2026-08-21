@@ -14,9 +14,9 @@
 
 ### 当前事实
 
-- Task 00 已完成：项目目录、权威文档、边界、评测设计和本计划已经建立。
-- 当前没有业务代码、依赖、数据库、测试或容器。
-- 第一项待实施任务是 Task 01。
+- Task 00—17 已完成，ServiceFlow V1 已通过最终软件、Compose、真实 40 案评测、浏览器和 PostgreSQL 验收。
+- 最终连接 Compose PostgreSQL 的完整测试为 53 个通过，当前没有待实施 Task。
+- Agent 会话 API、40 案报告、原生前端、API 容器和作品集文档均已实现；本计划保留为实施历史，不再表示当前待办。
 - 所有数据、政策和处理结果都是模拟内容。
 
 ### 每轮规则
@@ -263,7 +263,7 @@ git commit -m "feat: define serviceflow domain models"
 
 ### Task 03: 实现确定性售后政策
 
-**Objective:** 把 `docs/PRODUCT.md` 中六条模拟政策实现为可单测的纯函数。
+**Objective:** 把 `docs/PRODUCT.md` 中的模拟政策和只读查询分支实现为可单测的纯函数。
 
 **Files:**
 
@@ -1234,10 +1234,8 @@ git commit -m "docs: complete serviceflow v1 portfolio"
 
 ## 4. 开放配置
 
-以下内容不阻塞 Task 01-08，到 Task 09 时再根据可用环境填写：
+Task 09 已确认 `SERVICEFLOW_BASE_URL` 和 `SERVICEFLOW_MODEL` 的环境契约，并完成一次真实模型 JSON 冒烟。以下配置继续按需填写：
 
-- 实际 OpenAI-compatible `base_url`；
-- 实际模型 ID；
 - 单次 40 案评测预算；
 - LangGraph 锁定版本对应的 checkpointer API。
 

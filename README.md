@@ -65,6 +65,10 @@ flowchart LR
 Copy-Item .env.example .env
 ```
 
+`SERVICEFLOW_THINKING_MODE` 和 `SERVICEFLOW_REASONING_EFFORT` 控制 DeepSeek 的思考模式。
+项目默认使用 `enabled + high` 保持复杂中文意图质量；如果只追求简单意图的低延迟，可以在
+明确做过业务正确率回归后改为 `disabled`。
+
 ### 2. 启动后端和 MySQL
 
 ```powershell
@@ -166,6 +170,19 @@ uv run python -m serviceflow.evaluation.database_benchmark `
 
 它会在同一批临时 MySQL 数据上对比旧单列索引查询和新联合索引加 `LIMIT 1` 查询，记录
 `EXPLAIN`、实际返回行数、平均耗时和 P95；测试完成后自动清理临时记录。
+
+真实压力测试报告还会读取 API 的 `Server-Timing`，分别统计模型调用、LangGraph、数据库
+连接、SQL、业务规则、响应组装和 HTTP 往返耗时。若要把模型耗时继续拆成响应头、首 Token
+和首 Token 后生成，可以在 API 容器内运行流式探针：
+
+```powershell
+docker compose exec -T api python -m serviceflow.evaluation.model_latency `
+  --iterations 5 --concurrency 1 --output /tmp
+docker compose cp api:/tmp/serviceflow-model-latency.json `
+  ./outputs/evaluation/serviceflow-model-latency.json
+docker compose cp api:/tmp/serviceflow-model-latency.md `
+  ./outputs/evaluation/serviceflow-model-latency.md
+```
 
 固定案例位于 [`tests/eval_cases`](tests/eval_cases)，包含核心案例和复杂中文案例。真实模型评测需要本机 `.env` 中存在模型配置，结果默认写入被 Git 忽略的 `outputs/evaluation/`，不把运行时元数据和历史报告作为公开仓库内容。
 

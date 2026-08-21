@@ -131,6 +131,14 @@ async def test_message_directly_processes_and_exposes_trace(
     assert body["model"] == "fake-api-model"
     assert body["prompt_version"] == "service_agent_v1"
     assert body["token_usage"] == {"input": 10, "output": 5}
+    server_timing = response.headers["server-timing"]
+    assert "graph_ms;dur=" in server_timing
+    assert "database_connection_ms;dur=" in server_timing
+    assert "database_phase_ms;dur=" in server_timing
+    assert "policy_ms;dur=" in server_timing
+    assert "response_build_ms;dur=" in server_timing
+    assert "server_ms;dur=" in server_timing
+    assert float(response.headers["x-serviceflow-server-ms"]) > 0
     assert (await client.get(f"/api/v1/conversations/{thread_id}")).json() == body
 
 
