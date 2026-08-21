@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from time import perf_counter
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
@@ -23,6 +24,7 @@ from serviceflow.domain.models import (
 )
 from serviceflow.domain.policies import evaluate_policy
 from serviceflow.domain.results import Decision
+from serviceflow.infrastructure.timing import add_timing, measure_timing
 
 DEMO_REFERENCE_DATE = "2026-08-01"
 
@@ -38,7 +40,8 @@ class ServiceGraphNodes:
         self._session_factory = session_factory
 
     async def extract_intent(self, state: AgentState) -> AgentState:
-        result = await self._extractor.extract(state["user_message"])
+        with measure_timing("intent_total_ms"):
+            result = await self._extractor.extract(state["user_message"])
         token_usage = state.get("token_usage", {"input": 0, "output": 0})
         updates: AgentState = {
             "error": result.error,
@@ -90,8 +93,11 @@ class ServiceGraphNodes:
         order_id = state.get("order_id")
         if order_id is None:
             return {"error": "missing_order_id"}
-        async with self._session_factory() as session:
-            order = await ServiceTools(session).get_order(order_id)
+        with measure_timing("database_phase_ms"):
+            async with self._session_factory() as session:
+                with measure_timing("database_connection_ms"):
+                    await session.connection()
+                order = await ServiceTools(session).get_order(order_id)
         event_code = "order_not_found"
         if order is not None:
             event_code = "ok"
@@ -102,13 +108,16 @@ class ServiceGraphNodes:
         return {"error": None, "order_snapshot": _order_snapshot(order), "tool_events": events}
 
     def evaluate_policy(self, state: AgentState) -> AgentState:
-        order = _order_from_snapshot(state["order_snapshot"])
-        result = evaluate_policy(
-            order=order,
-            requested_action=state.get("requested_action"),
-            issue_type=state.get("issue_type"),
-            reference_date=date.fromisoformat(state.get("reference_date", DEMO_REFERENCE_DATE)),
-        )
+        with measure_timing("policy_ms"):
+            order = _order_from_snapshot(state["order_snapshot"])
+            result = evaluate_policy(
+                order=order,
+                requested_action=state.get("requested_action"),
+                issue_type=state.get("issue_type"),
+                reference_date=date.fromisoformat(
+                    state.get("reference_date", DEMO_REFERENCE_DATE)
+                ),
+            )
         return {"policy_id": result.policy_id, "decision": result.decision}
 
     async def execute_action(self, state: AgentState) -> AgentState:
@@ -116,9 +125,12 @@ class ServiceGraphNodes:
         order_id = state.get("order_id")
         if order_id is None or decision is Decision.EXPLAIN_ONLY:
             return {}
-        async with self._session_factory() as session:
-            tools = ServiceTools(session)
-            result, tool_name = await _execute_decision(tools, state, order_id)
+        with measure_timing("database_phase_ms"):
+            async with self._session_factory() as session:
+                with measure_timing("database_connection_ms"):
+                    await session.connection()
+                tools = ServiceTools(session)
+                result, tool_name = await _execute_decision(tools, state, order_id)
         if result is None:
             return {}
         case_id = None
@@ -139,22 +151,25 @@ class ServiceGraphNodes:
 
     async def read_final_state(self, state: AgentState) -> AgentState:
         final: dict[str, object] = {}
-        async with self._session_factory() as session:
-            tools = ServiceTools(session)
-            order_id = state.get("order_id")
-            order = None
-            if order_id:
-                order = await tools.get_order(order_id)
-            if order is not None:
-                final["order_status"] = order.status.value
-            case_id = state.get("case_id")
-            case_result = None
-            if case_id:
-                case_result = await tools.get_case_status(case_id)
-            approval_id = state.get("approval_id")
-            approval_result = None
-            if approval_id:
-                approval_result = await tools.get_case_status(approval_id)
+        with measure_timing("database_phase_ms"):
+            async with self._session_factory() as session:
+                with measure_timing("database_connection_ms"):
+                    await session.connection()
+                tools = ServiceTools(session)
+                order_id = state.get("order_id")
+                order = None
+                if order_id:
+                    order = await tools.get_order(order_id)
+                if order is not None:
+                    final["order_status"] = order.status.value
+                case_id = state.get("case_id")
+                case_result = None
+                if case_id:
+                    case_result = await tools.get_case_status(case_id)
+                approval_id = state.get("approval_id")
+                approval_result = None
+                if approval_id:
+                    approval_result = await tools.get_case_status(approval_id)
         if case_result and case_result.case:
             case = case_result.case
             if isinstance(case, Refund):
@@ -179,11 +194,14 @@ class ServiceGraphNodes:
             }
         )
         approved = bool(answer["approved"])
-        async with self._session_factory() as session:
-            result = await ServiceTools(session).decide_approval(
-                approval_id,
-                approved=approved,
-            )
+        with measure_timing("database_phase_ms"):
+            async with self._session_factory() as session:
+                with measure_timing("database_connection_ms"):
+                    await session.connection()
+                result = await ServiceTools(session).decide_approval(
+                    approval_id,
+                    approved=approved,
+                )
         case_id = approval_id
         if result.case is not None:
             case_id = result.case.id
@@ -198,6 +216,7 @@ class ServiceGraphNodes:
         }
 
     def compose_response(self, state: AgentState) -> AgentState:
+        started_at = perf_counter()
         error = state.get("error")
         if error == "intent_parse_error":
             message = "我没有理解这条请求，请提供订单号和要办理的事项。"
@@ -210,6 +229,7 @@ class ServiceGraphNodes:
             message = f"这条请求未能完成：{error}。"
         else:
             message = _success_message(state)
+        add_timing("response_compose_ms", (perf_counter() - started_at) * 1000)
         return {"assistant_message": message}
 
 

@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from time import perf_counter
 from typing import cast
 from uuid import uuid4
 
@@ -34,6 +35,7 @@ from serviceflow.domain.models import Approval, Order, Refund, Ticket
 from serviceflow.infrastructure.database import ensure_database_schema
 from serviceflow.infrastructure.seed import seed_database
 from serviceflow.infrastructure.tables import OrderRow, UserRow
+from serviceflow.infrastructure.timing import add_timing, measure_timing
 
 router = APIRouter(prefix="/api/v1")
 
@@ -98,7 +100,7 @@ async def create_conversation(
 ) -> ConversationResponse:
     thread_id = f"demo-{uuid4().hex[:12]}"
     _conversations(request)[thread_id] = payload.user_id
-    return _conversation_response(thread_id, {})
+    return _timed_conversation_response(thread_id, {})
 
 
 @router.post("/conversations/{thread_id}/messages", response_model=ConversationResponse)
@@ -109,16 +111,17 @@ async def send_conversation_message(
 ) -> ConversationResponse:
     user_id = _conversation_user(request, thread_id)
     graph = _agent_graph(request)
-    state = await graph.ainvoke(
-        {
-            "thread_id": thread_id,
-            "user_id": user_id,
-            "user_message": payload.message,
-            "reference_date": DEMO_REFERENCE_DATE,
-        },
-        config=_thread_config(thread_id),
-    )
-    return _conversation_response(thread_id, state)
+    with measure_timing("graph_ms"):
+        state = await graph.ainvoke(
+            {
+                "thread_id": thread_id,
+                "user_id": user_id,
+                "user_message": payload.message,
+                "reference_date": DEMO_REFERENCE_DATE,
+            },
+            config=_thread_config(thread_id),
+        )
+    return _timed_conversation_response(thread_id, state)
 
 
 @router.get("/conversations/{thread_id}", response_model=ConversationResponse)
@@ -126,9 +129,10 @@ async def get_conversation(thread_id: str, request: Request) -> ConversationResp
     _conversation_user(request, thread_id)
     graph = request.app.state.agent_graph
     if graph is None:
-        return _conversation_response(thread_id, {})
-    state = (await graph.aget_state(_thread_config(thread_id))).values
-    return _conversation_response(thread_id, state)
+        return _timed_conversation_response(thread_id, {})
+    with measure_timing("graph_state_ms"):
+        state = (await graph.aget_state(_thread_config(thread_id))).values
+    return _timed_conversation_response(thread_id, state)
 
 
 @router.post(
@@ -143,14 +147,16 @@ async def decide_conversation_approval(
 ) -> ConversationResponse:
     _conversation_user(request, thread_id)
     graph = _agent_graph(request)
-    state = (await graph.aget_state(_thread_config(thread_id))).values
+    with measure_timing("graph_state_ms"):
+        state = (await graph.aget_state(_thread_config(thread_id))).values
     if state.get("approval_id") != approval_id:
         raise HTTPException(status_code=404, detail="approval_not_found")
-    resumed = await graph.ainvoke(
-        Command(resume={"approved": payload.approved}),
-        config=_thread_config(thread_id),
-    )
-    return _conversation_response(thread_id, resumed)
+    with measure_timing("graph_ms"):
+        resumed = await graph.ainvoke(
+            Command(resume={"approved": payload.approved}),
+            config=_thread_config(thread_id),
+        )
+    return _timed_conversation_response(thread_id, resumed)
 
 
 def _order_response(order: Order) -> OrderResponse:
@@ -255,6 +261,16 @@ def _conversation_response(
         prompt_version=_optional_text(state.get("prompt_version")),
         token_usage=TokenUsageResponse.model_validate(token_usage),
     )
+
+
+def _timed_conversation_response(
+    thread_id: str,
+    state: Mapping[str, object],
+) -> ConversationResponse:
+    started_at = perf_counter()
+    response = _conversation_response(thread_id, state)
+    add_timing("response_build_ms", (perf_counter() - started_at) * 1000)
+    return response
 
 
 def _optional_text(value: object) -> str | None:
