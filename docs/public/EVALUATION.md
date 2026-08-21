@@ -104,5 +104,21 @@ uv run python -m serviceflow.evaluation.database_benchmark `
   --noise-rows-per-order 180
 ```
 
+## 分阶段耗时与模型首 Token
+
+API 在每个响应的 `Server-Timing` 头中记录模型调用、LangGraph、数据库连接、SQL、业务
+规则和响应组装耗时。`real_stress.py` 会把这些阶段聚合成平均值、P50、P95 和最大值。
+
+模型流式探针用于继续拆分收到响应头、首 Token（TTFT）和首 Token 后生成：
+
+```powershell
+docker compose exec -T api python -m serviceflow.evaluation.model_latency `
+  --iterations 5 --concurrency 1 --output /tmp
+```
+
+DeepSeek V4 的思考模式可通过 `SERVICEFLOW_THINKING_MODE` 控制，思考强度通过
+`SERVICEFLOW_REASONING_EFFORT` 控制。模式切换必须同时比较延迟和业务通过率，不能只用
+速度决定默认配置。
+
 它在目标订单和其他订单混合的数据分布上，对比旧单列索引与新联合索引的 `EXPLAIN`、
 `Using filesort`、实际返回行数、平均耗时和 P95。实验完成后删除所有临时记录。

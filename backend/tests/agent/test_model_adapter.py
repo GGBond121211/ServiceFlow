@@ -45,3 +45,23 @@ async def test_fake_client_json_maps_to_model_result() -> None:
     assert result.output_tokens == 5
     assert completions.request is not None
     assert completions.request["response_format"] == {"type": "json_object"}
+
+
+@pytest.mark.asyncio
+async def test_optional_thinking_mode_is_forwarded_to_deepseek() -> None:
+    completions = FakeCompletions()
+    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    model = OpenAICompatibleModel(
+        client=fake_client,
+        model="deepseek-v4-flash",
+        thinking_mode="enabled",
+        reasoning_effort="low",
+    )
+
+    await model.complete_json(system="Return JSON", user="I want a refund")
+
+    assert completions.request is not None
+    assert completions.request["extra_body"] == {
+        "thinking": {"type": "enabled"},
+    }
+    assert completions.request["reasoning_effort"] == "low"
