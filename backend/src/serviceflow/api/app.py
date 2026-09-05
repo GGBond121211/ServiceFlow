@@ -26,6 +26,8 @@ from serviceflow.infrastructure.timing import (
 )
 
 EVALUATION_DIR = Path(__file__).parents[4] / "outputs" / "evaluation"
+BUNDLED_EVALUATION_DIR = Path(__file__).parents[1] / "evaluation" / "public"
+EVALUATION_REPORT = "serviceflow-v1-report.md"
 
 
 def create_app(
@@ -106,9 +108,14 @@ def create_app(
         payload, content_type = prometheus_payload()
         return Response(content=payload, media_type=content_type)
 
+    evaluation_dir = (
+        EVALUATION_DIR
+        if (EVALUATION_DIR / EVALUATION_REPORT).is_file()
+        else BUNDLED_EVALUATION_DIR
+    )
     application.mount(
         "/evaluation",
-        StaticFiles(directory=EVALUATION_DIR, check_dir=False),
+        StaticFiles(directory=evaluation_dir),
         name="evaluation",
     )
     return application

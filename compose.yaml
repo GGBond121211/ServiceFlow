@@ -87,7 +87,7 @@ services:
     ports:
       - "8009:8000"
     volumes:
-      - ./outputs/evaluation:/outputs/evaluation:ro
+      - ./outputs/evaluation:/app/outputs/evaluation:ro
       - ./experiments/policy_documents:/app/experiments/policy_documents:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
