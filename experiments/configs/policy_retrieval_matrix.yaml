@@ -1,0 +1,42 @@
+# 检索策略实验矩阵 —— 对应决策台账第 3-6 行
+# 关键要求（计划补充 R）：必须包含"纯向量"对照档。
+# 面试高频题"为什么纯向量检索在你的场景下不行"只能用自己的实测数据回答，
+# 不能引用外部文章结论。
+
+control_arm:
+  id: pure_vector
+  description: 纯向量检索对照档 —— 不加 BM25、不加 Rerank、不改写 Query
+  why_required: >
+    009 的政策场景包含订单号、商品型号、政策条款编号、错误码等精确匹配需求。
+    纯向量在这类查询上的表现必须被实测，否则"为什么用混合检索"没有依据。
+
+dimensions:
+  retrieval_mode: [pure_vector, bm25_only, hybrid]
+  rrf_weight:     [0.3, 0.5, 0.7]        # 仅 hybrid 档生效
+  chunk_strategy: [policy_clause_boundary, token_256, token_512, token_1024]
+  overlap:        [0.0, 0.1, 0.2]
+  top_k:          [10, 30, 50]
+  rerank:         [off, cross_encoder]
+  rerank_top_n:   [5, 10]
+  query_rewrite:  [off, on]
+  metadata_filter: [off, tenant_region_effective_time]
+
+query_set_requirements:
+  # Embedding / 检索 A/B 的查询集必须覆盖这些类型，否则结论不成立
+  - 中文政策条款自然语言提问
+  - 商品名与品类
+  - 地区与时间限定（"广东地区""活动期间"）
+  - 订单状态词
+  - 专有名词（订单号 ORDER-xxx、政策编号 POL-xxx、错误码）
+  - 中英混合表述
+
+metrics:
+  retrieval: [recall_at_k, mrr, citation_validity_rate, empty_recall_rate]
+  latency:   [p50_ms, p95_ms]
+  cost:      [index_size_mb, build_time_s]
+  correctness: [policy_version_filter_accuracy]
+
+discipline:
+  - 每次只改一个维度（计划 Step 9）
+  - 结论写入 decision_records/policy_rag_chunking.md 并追加到 DECISIONS.md
+  - 参数没有万能默认值；Chunk 大小必须用本项目的问题集比较后再定

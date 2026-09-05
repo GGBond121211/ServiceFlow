@@ -1,0 +1,81 @@
+{
+  "step": "8.1",
+  "executed_at": "2026-09-05",
+  "scope": "gateway hardening after source and acceptance audit",
+  "implementation": {
+    "request_context": [
+      "tenant_id",
+      "request_id",
+      "session_id",
+      "goal_id",
+      "case_id",
+      "operation_id",
+      "run_id",
+      "trace_id"
+    ],
+    "service_auth": "Bearer SERVICEFLOW_GATEWAY_INTERNAL_KEY",
+    "host_binding": "127.0.0.1:8010",
+    "route_version": "step8.1-v1",
+    "high_risk_route": "a proposed refund or compensation tool call is regenerated through primary-only high-risk-review before deterministic gates",
+    "streaming_policy": "not implemented; stream=true returns HTTP 422",
+    "queue_policy": "queue_limit=0; concurrency saturation fails fast with backpressure",
+    "metrics": [
+      "requests",
+      "attempts",
+      "success",
+      "failure",
+      "fallback",
+      "429",
+      "parse_failure",
+      "input_tokens",
+      "output_tokens",
+      "estimated_cost",
+      "latency_avg",
+      "latency_p95",
+      "ttft_avg",
+      "ttft_p95",
+      "selected_model_distribution"
+    ]
+  },
+  "frontier_pricing": {
+    "unit": "frontier_diamond_per_million_tokens",
+    "source": "Frontier console pricing page in user-authenticated session",
+    "deepseek-v4-flash": {
+      "input": 12,
+      "output": 36,
+      "cached_input": 0.3996,
+      "context_length": 1000000
+    },
+    "gpt-5.6-luna": {
+      "input": 1.5,
+      "output": 12,
+      "cached_input": 0.18,
+      "context_length": 1000000
+    }
+  },
+  "verification": {
+    "step8_1_narrow": "31 passed in 21.63s",
+    "full_regression": "282 passed, 1 skipped in 274.79s",
+    "ruff": "all checks passed",
+    "compose_config": "passed",
+    "compose_services": "api, gateway-a, gateway-b, gateway-proxy, mysql, qdrant, redis, worker running",
+    "gateway_health_sequence": ["gateway-a", "gateway-b", "gateway-a", "gateway-b"],
+    "unauthenticated_internal_metrics": 401,
+    "authenticated_internal_metrics": {"routes": {}},
+    "api_health": "ok"
+  },
+  "trace_acceptance": {
+    "path": "API -> ModelGateway -> model provider -> MCP ToolExecutor -> database -> Outbox -> Worker",
+    "asserted_same_trace_id": true,
+    "asserted_worker_parent": "outbox.enqueue span",
+    "model_provider": "FakeModelProvider",
+    "external_model_calls": 0
+  },
+  "boundaries": [
+    "two gateway replicas still share one host, Redis, MySQL and Frontier failure domain",
+    "metrics are per-process in-memory aggregation; Prometheus and Grafana remain Step 10",
+    "TTFT fields are ready but stay null until streaming is implemented",
+    "route quality and cost A/B remain Step 9",
+    "no real payment, logistics, compensation or customer data was used"
+  ]
+}

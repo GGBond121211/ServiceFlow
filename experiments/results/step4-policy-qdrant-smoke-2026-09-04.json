@@ -1,0 +1,18 @@
+{
+  "experiment": "step4-policy-qdrant-smoke",
+  "executed_at": "2026-09-04",
+  "qdrant_image": "qdrant/qdrant:v1.15.5",
+  "collection": "serviceflow_step4_smoke",
+  "policy_documents": 11,
+  "embedding": "HashEmbedding-128-test-adapter",
+  "hnsw_parameters": "Qdrant server defaults; not selected",
+  "healthcheck": "host /healthz passed; container health healthy",
+  "upsert": "passed",
+  "query": "passed; quality boundary query returned CN-QUALITY-005 and CN-QUALITY-004 among top 5",
+  "citation_fields": "policy_id/version/source/source_locator present",
+  "wrong_region_filter": "passed; 0 results for US against CN-only policy corpus",
+  "stopped_qdrant": "exact_fallback",
+  "fallback_reason": "ResponseHandlingException",
+  "restart": "healthy",
+  "scope": "small component smoke; no model call, no full retrieval matrix, no final parameter decision; collection reindexed after quality-policy expansion"
+}

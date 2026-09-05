@@ -1,0 +1,43 @@
+{
+  "run_date": "2026-09-05",
+  "scope": "two_models_x_json_and_native_tool_calling",
+  "provider": "Frontier Intelligence shared base URL and credential",
+  "provider_independence": false,
+  "price_unit": "Frontier diamond",
+  "price_status": "not exposed by GET /v1/models; no cost estimate recorded",
+  "probes": [
+    {
+      "status": "success",
+      "requested_model": "deepseek-v4-flash",
+      "structured_output": true,
+      "chinese_next_action_present": true,
+      "native_tool_calling": true,
+      "tool_names": [
+        "get_order"
+      ],
+      "response_models": [
+        "deepseek-v4-flash",
+        "deepseek-v4-flash"
+      ],
+      "input_tokens": 507,
+      "output_tokens": 652
+    },
+    {
+      "status": "success",
+      "requested_model": "gpt-5.6-luna",
+      "structured_output": true,
+      "chinese_next_action_present": true,
+      "native_tool_calling": true,
+      "tool_names": [
+        "get_order"
+      ],
+      "response_models": [
+        "gpt-5.6-luna",
+        "gpt-5.6-luna"
+      ],
+      "input_tokens": 704,
+      "output_tokens": 115
+    }
+  ],
+  "boundary": "Connectivity and capability smoke only; does not prove best quality, production readiness, or independent provider disaster recovery."
+}

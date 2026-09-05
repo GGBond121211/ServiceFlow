@@ -52,6 +52,10 @@ class ApprovalDecisionRequest(BaseModel):
     approved: bool
 
 
+class ConfirmationRequest(BaseModel):
+    confirmed: bool
+
+
 class ToolEventResponse(BaseModel):
     tool: str
     ok: bool
@@ -80,3 +84,4 @@ class ConversationResponse(BaseModel):
     model: str | None
     prompt_version: str | None
     token_usage: TokenUsageResponse
+    agent_status: str | None = None

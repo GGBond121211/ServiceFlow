@@ -1,0 +1,17 @@
+{
+  "scope": "small_smoke",
+  "project": "Project-0009-ServiceFlow",
+  "model": "deepseek-v4-flash",
+  "native_tool_call": true,
+  "tool_execution": "read_only_only",
+  "tool_sequence": ["get_order", "get_shipment"],
+  "tool_event_count": 2,
+  "agent_status": "COMPLETED",
+  "final_business_state": {
+    "order_id": "ORDER-001",
+    "order_status": "paid",
+    "shipment_status": "paid"
+  },
+  "token_usage": {"input": 2563, "output": 191},
+  "evidence_boundary": "单次 Docker API 小规模 smoke；只证明 Frontier 模型原生 tool_calls、MCP 链路和最终事实汇总可运行，不代表完整 Agent 质量或生产 SLA。"
+}

@@ -22,6 +22,7 @@ backend/*.egg-info/
 
 # 内部工作记录：不进入公开仓库
 AGENTS.md
+CLAUDE.md
 .hermes/
 work/*
 !work/.gitkeep
@@ -31,6 +32,9 @@ work/*
 docs/*
 !docs/public/
 !docs/public/**
+!docs/knowledge/
+!docs/knowledge/java-guide-ai/
+!docs/knowledge/java-guide-ai/**
 
 # 评测结果在本地生成，不把运行元数据固定进仓库
 outputs/*

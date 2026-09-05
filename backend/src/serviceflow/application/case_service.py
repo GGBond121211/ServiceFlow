@@ -56,7 +56,14 @@ class CaseService:
         await self._session.commit()
         return CaseResult(ok=True, code="refund_completed", order=updated, case=refund)
 
-    async def create_ticket(self, order_id: str, kind: str, summary: str) -> CaseResult:
+    async def create_ticket(
+        self,
+        order_id: str,
+        kind: str,
+        summary: str,
+        *,
+        commit: bool = True,
+    ) -> CaseResult:
         order = await self._orders.get(order_id)
         if order is None:
             return _order_not_found()
@@ -72,8 +79,22 @@ class CaseService:
             created_at=datetime.now(UTC),
         )
         updated = await self._orders.set_status(order.id, OrderStatus.TICKET_OPEN)
-        await self._session.commit()
+        if commit:
+            await self._session.commit()
         return CaseResult(ok=True, code="ticket_created", order=updated, case=ticket)
+
+    async def request_compensation(self, order_id: str) -> CaseResult:
+        result = await self.create_ticket(
+            order_id,
+            kind=TicketKind.SUPPORT.value,
+            summary="补偿申请，等待人工核定金额",
+        )
+        return CaseResult(
+            ok=result.ok,
+            code="compensation_requested" if result.ok else result.code,
+            order=result.order,
+            case=result.case,
+        )
 
     async def create_approval(self, order_id: str, action: RequestedAction) -> CaseResult:
         order = await self._orders.get(order_id)
@@ -88,7 +109,13 @@ class CaseService:
         await self._session.commit()
         return CaseResult(ok=True, code="approval_pending", order=order, case=approval)
 
-    async def decide_approval(self, approval_id: str, approved: bool) -> CaseResult:
+    async def decide_approval(
+        self,
+        approval_id: str,
+        approved: bool,
+        *,
+        commit: bool = True,
+    ) -> CaseResult:
         approval = await self._cases.get_approval(approval_id)
         if approval is None:
             return CaseResult(ok=False, code="case_not_found")
@@ -109,7 +136,8 @@ class CaseService:
                 created_at=datetime.now(UTC),
             )
             updated_order = await self._orders.set_status(order.id, OrderStatus.REFUNDED)
-            await self._session.commit()
+            if commit:
+                await self._session.commit()
             return CaseResult(
                 ok=True,
                 code="approval_approved",
@@ -117,7 +145,24 @@ class CaseService:
                 case=refund,
             )
 
-        await self._session.commit()
+        if approved and approval.requested_action is RequestedAction.COMPENSATION:
+            result = await self.create_ticket(
+                order.id,
+                kind=TicketKind.SUPPORT.value,
+                summary="补偿申请已审批，等待人工核定金额",
+                commit=False,
+            )
+            if commit:
+                await self._session.commit()
+            return CaseResult(
+                ok=result.ok,
+                code="approval_approved" if result.ok else result.code,
+                order=result.order,
+                case=result.case,
+            )
+
+        if commit:
+            await self._session.commit()
         code = "approval_rejected"
         if approved:
             code = "approval_approved"

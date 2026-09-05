@@ -1,0 +1,18 @@
+{
+  "scope": "one_request_native_tool_call_smoke",
+  "model": "deepseek-v4-flash",
+  "tool_execution": false,
+  "status": "success",
+  "native_tool_call": true,
+  "tool_calls": [
+    {
+      "name": "get_order",
+      "argument_keys": [
+        "order_id"
+      ]
+    }
+  ],
+  "response_content_present": true,
+  "input_tokens": 378,
+  "output_tokens": 82
+}

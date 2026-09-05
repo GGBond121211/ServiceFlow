@@ -9,9 +9,12 @@ RUN uv sync --locked --no-dev --no-install-project
 
 COPY src ./src
 COPY tests/fixtures ./tests/fixtures
-RUN uv sync --locked --no-dev
 
-ENV PATH="/app/.venv/bin:$PATH"
+RUN useradd --create-home serviceflow
+
+ENV PATH="/app/.venv/bin:$PATH" PYTHONPATH="/app/src"
+
+USER serviceflow
 
 EXPOSE 8000
 

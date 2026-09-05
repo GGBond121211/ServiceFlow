@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from serviceflow.agent.model import ModelResult
+from serviceflow.agent.model import ModelResult, NativeModelResult, NativeToolCall
 from serviceflow.api.app import create_app
 from serviceflow.infrastructure.database import Base
 from serviceflow.infrastructure.seed import seed_database
@@ -52,6 +52,40 @@ class ApiFakeModel:
         )
 
 
+class NativeApiFakeModel:
+    async def complete_with_tools(self, *, messages, tools) -> NativeModelResult:
+        return NativeModelResult(
+            content="",
+            tool_calls=(
+                NativeToolCall(
+                    "native-call-1",
+                    "request_refund",
+                    {"order_id": "ORDER-004"},
+                ),
+            ),
+            model="fake-native-api-model",
+            input_tokens=12,
+            output_tokens=4,
+        )
+
+
+class NativeApprovalApiFakeModel:
+    async def complete_with_tools(self, *, messages, tools) -> NativeModelResult:
+        return NativeModelResult(
+            content="",
+            tool_calls=(
+                NativeToolCall(
+                    "native-approval-call-1",
+                    "request_refund",
+                    {"order_id": "ORDER-003"},
+                ),
+            ),
+            model="fake-native-approval-model",
+            input_tokens=12,
+            output_tokens=4,
+        )
+
+
 @pytest_asyncio.fixture
 async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
     engine = create_async_engine(
@@ -73,13 +107,30 @@ async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
     await engine.dispose()
 
 
-async def create_conversation(client: httpx.AsyncClient) -> str:
+async def create_conversation(client: httpx.AsyncClient, user_id: str = "USER-001") -> str:
     response = await client.post(
         "/api/v1/conversations",
-        json={"user_id": "USER-001"},
+        json={"user_id": user_id},
     )
     assert response.status_code == 201
     return response.json()["thread_id"]
+
+
+@pytest_asyncio.fixture
+async def native_client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'native-agent-api.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
+        await seed_database(session)
+    application = create_app(model=NativeApiFakeModel(), session_factory=factory)
+    transport = httpx.ASGITransport(app=application)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        yield client
+    await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -101,6 +152,7 @@ async def test_create_and_get_empty_conversation(client: httpx.AsyncClient) -> N
         "model": None,
         "prompt_version": None,
         "token_usage": {"input": 0, "output": 0},
+        "agent_status": None,
     }
     assert "/api/v1/conversations" in paths
     assert "/api/v1/conversations/{thread_id}/messages" in paths
@@ -166,6 +218,164 @@ async def test_second_message_supplies_missing_order_in_same_thread(
     assert "order_id" in missing["assistant_message"]
     assert completed["decision"] == "cancel"
     assert completed["final_business_state"] == {"order_status": "cancelled"}
+
+
+@pytest.mark.asyncio
+async def test_native_confirmation_resumes_the_pending_tool_and_reads_db(
+    native_client: httpx.AsyncClient,
+) -> None:
+    thread_id = await create_conversation(native_client, user_id="USER-002")
+    pending = (
+        await native_client.post(
+            f"/api/v1/conversations/{thread_id}/messages",
+            json={"message": "Refund ORDER-004"},
+        )
+    ).json()
+
+    assert pending["agent_status"] == "WAITING_CONFIRMATION"
+    assert pending["tool_events"][-1]["code"] == "confirmation_required"
+
+    resumed = (
+        await native_client.post(
+            f"/api/v1/conversations/{thread_id}/confirmations",
+            json={"confirmed": True},
+        )
+    ).json()
+
+    assert resumed["agent_status"] == "COMPLETED"
+    assert resumed["final_business_state"] == {
+        "order_status": "refunded",
+        "case_status": "completed",
+    }
+    assert resumed["tool_events"][-1]["code"] == "refund_completed"
+
+
+@pytest.mark.asyncio
+async def test_native_approval_endpoint_resumes_after_confirmation(
+    tmp_path: Path,
+) -> None:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'native-approval-api.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
+        await seed_database(session)
+    application = create_app(model=NativeApprovalApiFakeModel(), session_factory=factory)
+    transport = httpx.ASGITransport(app=application)
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        thread_id = await create_conversation(client)
+        pending = (
+            await client.post(
+                f"/api/v1/conversations/{thread_id}/messages",
+                json={"message": "Refund ORDER-003"},
+            )
+        ).json()
+        confirmed = (
+            await client.post(
+                f"/api/v1/conversations/{thread_id}/confirmations",
+                json={"confirmed": True},
+            )
+        ).json()
+        approval_id = confirmed["approval"]["id"]
+        approved = (
+            await client.post(
+                f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
+                json={"approved": True},
+            )
+        ).json()
+    await engine.dispose()
+
+    assert pending["agent_status"] == "WAITING_CONFIRMATION"
+    assert confirmed["agent_status"] == "WAITING_APPROVAL"
+    assert confirmed["final_business_state"]["approval_status"] == "pending"
+    assert approved["agent_status"] == "COMPLETED"
+    assert approved["approval"] == {"id": approval_id, "status": "approved"}
+    assert approved["final_business_state"] == {
+        "order_status": "refunded",
+        "approval_status": "approved",
+        "refund_status": "completed",
+    }
+
+
+@pytest.mark.asyncio
+async def test_native_confirmation_survives_api_app_restart(tmp_path: Path) -> None:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'native-restart.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
+        await seed_database(session)
+
+    first_app = create_app(model=NativeApiFakeModel(), session_factory=factory)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=first_app), base_url="http://testserver"
+    ) as first:
+        thread_id = await create_conversation(first, user_id="USER-002")
+        pending = (
+            await first.post(
+                f"/api/v1/conversations/{thread_id}/messages",
+                json={"message": "Refund ORDER-004"},
+            )
+        ).json()
+
+    second_app = create_app(model=NativeApiFakeModel(), session_factory=factory)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=second_app), base_url="http://testserver"
+    ) as second:
+        restored = (await second.get(f"/api/v1/conversations/{thread_id}")).json()
+        completed = (
+            await second.post(
+                f"/api/v1/conversations/{thread_id}/confirmations",
+                json={"confirmed": True},
+            )
+        ).json()
+    await engine.dispose()
+
+    assert pending["agent_status"] == "WAITING_CONFIRMATION"
+    assert restored["agent_status"] == "WAITING_CONFIRMATION"
+    assert completed["agent_status"] == "COMPLETED"
+    assert completed["final_business_state"]["order_status"] == "refunded"
+
+
+@pytest.mark.asyncio
+async def test_confirmation_rejects_tampered_pending_arguments(tmp_path: Path) -> None:
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{(tmp_path / 'native-binding.db').as_posix()}"
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False)
+    async with factory() as session:
+        await seed_database(session)
+    application = create_app(model=NativeApiFakeModel(), session_factory=factory)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=application), base_url="http://testserver"
+    ) as client:
+        thread_id = await create_conversation(client, user_id="USER-002")
+        await client.post(
+            f"/api/v1/conversations/{thread_id}/messages",
+            json={"message": "Refund ORDER-004"},
+        )
+        graph = application.state.agent_graph
+        state = (await graph.aget_state({"configurable": {"thread_id": thread_id}})).values
+        pending = dict(state["pending_tool_call"])
+        pending["arguments"] = {"order_id": "ORDER-007"}
+        await graph.aupdate_state(
+            {"configurable": {"thread_id": thread_id}},
+            {"pending_tool_call": pending},
+        )
+        response = await client.post(
+            f"/api/v1/conversations/{thread_id}/confirmations",
+            json={"confirmed": True},
+        )
+    await engine.dispose()
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "pending_binding_mismatch"
 
 
 @pytest.mark.asyncio

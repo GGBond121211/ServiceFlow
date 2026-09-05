@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "scope": "small_smoke",
+  "project": "Project-0009-ServiceFlow",
+  "model": "qwen3.7-text-rerank",
+  "implementation": "serviceflow.infrastructure.rerank_model.QwenTextReranker",
+  "credential_source": "CODEINSIGHT_EMBEDDING_API_KEY",
+  "endpoint_kind": "DashScope workspace text-rerank endpoint",
+  "query_count": 1,
+  "candidate_document_count": 3,
+  "top_n": 3,
+  "results": [
+    {"index": 0, "relevance_score": 0.7286585802552479},
+    {"index": 1, "relevance_score": 0.23973355242590044},
+    {"index": 2, "relevance_score": 0.00081024807937440935}
+  ],
+  "usage": {"prompt_tokens": 300, "total_tokens": 300},
+  "evidence_boundary": "仅证明当前业务空间凭据、endpoint、请求体和响应解析可用；不代表完整语料效果、成本或生产 SLA。"
+}

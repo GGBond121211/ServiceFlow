@@ -112,10 +112,11 @@ docker compose down
 
 ```powershell
 Set-Location backend
-uv run pytest -q
+uv run python -m pytest -q --basetemp=../work/pytest-readme
 uv run ruff check .
-uv run ruff format --check .
 ```
+
+`ruff format` 不作为当前门禁。V1 已按 `v1.0.0` / `v1.0.1` 冻结，格式器版本差异会改变冻结文件；代码检查以 `ruff check` 为准。
 
 异步全链路压力测试使用核心 40 案和复杂中文 60 案，共 100 个案例。它使用确定性的
 异步回放模型，不消耗外部模型额度；100 个逻辑用户共享同一个 FastAPI、LangGraph、

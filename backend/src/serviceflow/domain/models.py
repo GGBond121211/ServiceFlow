@@ -20,6 +20,7 @@ class RequestedAction(StrEnum):
     REFUND = "refund"
     EXCHANGE = "exchange"
     REPAIR = "repair"
+    COMPENSATION = "compensation"
 
 
 class IssueType(StrEnum):

@@ -1,0 +1,9 @@
+{"query_id":"active_return_window_cn","query":"中国大陆网络购买商品，签收后七日内想退货退款，适用什么规则","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":["CN-7DAY-001","CN-7DAY-002","CN-7DAY-005"],"must_not_include":[]}
+{"query_id":"return_exception_cn","query":"定制商品拆封后还能不能按七日无理由退货","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":["CN-7DAY-003"],"must_not_include":[]}
+{"query_id":"quality_repair_exchange_cn","query":"商品有质量问题，我要求维修或者换货，依据是什么","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":["CN-QUALITY-002","CN-QUALITY-004"],"must_not_include":[]}
+{"query_id":"quality_shipping_cn","query":"质量问题退货换货的必要运费由谁承担","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":["CN-QUALITY-003"],"must_not_include":["CN-7DAY-006"]}
+{"query_id":"three_guarantees_no_universal_day_count","query":"所有商品是不是都统一三十天三包，超过七天还能不能直接换货","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":["CN-QUALITY-005","CN-QUALITY-002"],"must_not_include":[]}
+{"query_id":"wrong_region_us","query":"七日无理由退货期限怎么计算","tenant_id":"tenant-a","region":"US","at":"2026-08-01","expected_policy_ids":[],"must_not_include":["CN-7DAY-001","CN-QUALITY-002"]}
+{"query_id":"before_policy_effective_date","query":"签收后七日内可以申请退货吗","tenant_id":"tenant-a","region":"CN","at":"2016-01-01","expected_policy_ids":[],"must_not_include":["CN-7DAY-001","CN-7DAY-002"]}
+{"query_id":"mixed_language_policy_question","query":"CN policy: quality issue repair or exchange, 运费怎么算","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":["CN-QUALITY-002","CN-QUALITY-003"],"must_not_include":[]}
+{"query_id":"policy_identifier_gap_probe","query":"请解释 CN-7DAY-002","tenant_id":"tenant-a","region":"CN","at":"2026-08-01","expected_policy_ids":[],"must_not_include":[],"baseline_gap":"exact baseline does not yet index policy_id as searchable text; retain this probe for lexical/hybrid experiments"}

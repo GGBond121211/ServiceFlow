@@ -33,8 +33,18 @@ class IntentExtractor:
         self._model = model
         self._prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def extract(self, user_message: str) -> IntentExtractionResult:
-        model_result = await self._model.complete_json(system=self._prompt, user=user_message)
+    async def extract(
+        self,
+        user_message: str,
+        *,
+        system_prompt: str | None = None,
+        prompt_version: str | None = None,
+    ) -> IntentExtractionResult:
+        if system_prompt is None:
+            system_prompt = self._prompt
+        if prompt_version is None:
+            prompt_version = PROMPT_VERSION
+        model_result = await self._model.complete_json(system=system_prompt, user=user_message)
         try:
             intent = ParsedIntent.model_validate(model_result.content)
         except ValidationError:
@@ -42,7 +52,7 @@ class IntentExtractor:
                 intent=None,
                 error="intent_parse_error",
                 model_name=model_result.model,
-                prompt_version=PROMPT_VERSION,
+                prompt_version=prompt_version,
                 input_tokens=model_result.input_tokens,
                 output_tokens=model_result.output_tokens,
             )
@@ -50,7 +60,7 @@ class IntentExtractor:
             intent=intent,
             error=None,
             model_name=model_result.model,
-            prompt_version=PROMPT_VERSION,
+            prompt_version=prompt_version,
             input_tokens=model_result.input_tokens,
             output_tokens=model_result.output_tokens,
         )

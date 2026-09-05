@@ -7,7 +7,7 @@
 权威计划文件：
 
 ```text
-C:\Users\Alex\Desktop\workspace\Project-0009-ServiceFlow\.hermes\plans\2026-08-19_145615-serviceflow-backend-interview-learning.md
+C:\Users\Alex\Desktop\Mirasim\Project-0009-ServiceFlow\.hermes\plans\2026-08-19_145615-serviceflow-backend-interview-learning.md
 ```
 
 页面顶部把计划整理为 3 天、6 个单元：
@@ -50,7 +50,7 @@ C:\Users\Alex\Desktop\workspace\Project-0009-ServiceFlow\.hermes\plans\2026-08-1
 可以直接打开 `index.html`，也可以启动本地静态服务器：
 
 ```powershell
-cd C:\Users\Alex\Desktop\workspace\Project-0009-ServiceFlow\learning_visualizer
+cd C:\Users\Alex\Desktop\Mirasim\Project-0009-ServiceFlow\learning_visualizer
 python -m http.server 4173 --bind 127.0.0.1
 ```
 

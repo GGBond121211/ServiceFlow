@@ -1,0 +1,111 @@
+# ServiceFlow 2.0 Policy RAG 来源登记
+# 这是来源和使用边界登记，不是把所有来源都当成同等法律依据。
+
+version: policy-source-registry-v1
+verified_at: 2026-09-04
+layers:
+  - id: regulation
+    priority: 100
+    authority: official
+    usage: 作为法律边界和引用依据；内容只做条款级结构化释义，回答时回指原文。
+  - id: local_guidance
+    priority: 80
+    authority: official_guidance
+    usage: 作为地方监管合规操作参考；不能替代具体地区适用法的核验。
+  - id: project_internal
+    priority: 50
+    authority: project_defined
+    usage: 仅表示本项目演示商家的内部服务承诺，不得伪装成法律规定。
+  - id: sop
+    priority: 40
+    authority: project_defined
+    usage: 规定客服和 Agent 的处理步骤，不决定法定权利或最终业务事实。
+  - id: faq
+    priority: 30
+    authority: project_defined
+    usage: 覆盖口语问法和解释模板；必须回到法规、内部政策和订单事实。
+  - id: category_rule
+    priority: 40
+    authority: project_defined
+    usage: 商品类别的分流规则；缺少类别、地区或商品状态时必须追问或转人工。
+  - id: reference
+    priority: 0
+    authority: technical_reference
+    usage: 仅记录技术调用依据，不进入售后政策检索语料。
+
+sources:
+  - id: cn-regulation-7day
+    layer: regulation
+    title: 网络购买商品七日无理由退货暂行办法
+    url: https://www.gov.cn/zhengce/2020-11/03/content_5723721.htm
+    locator: 第二条至第十七条
+    license_or_note: 中国政府网公开法规；结构化释义不是法律意见
+  - id: cn-regulation-consumer
+    layer: regulation
+    title: 中华人民共和国消费者权益保护法
+    url: https://sjfg.samr.gov.cn/law/pageInfo/main.main
+    locator: 经营者义务、退货与赔偿相关条款
+    license_or_note: 国家市场监督管理总局法律法规规章数据库；需按条款人工核对
+  - id: cn-regulation-quality
+    layer: regulation
+    title: 中华人民共和国产品质量法
+    url: https://sjfg.samr.gov.cn/law/pageInfo/main.main
+    locator: 产品质量责任和三包相关条款
+    license_or_note: 国家市场监督管理总局法律法规规章数据库；需按条款人工核对
+  - id: cn-regulation-implementation
+    layer: regulation
+    title: 中华人民共和国消费者权益保护法实施条例
+    url: https://www.gov.cn/zhengce/content/202403/content_6940150.htm
+    locator: 经营者义务和消费者权益保护相关条款
+    license_or_note: 中国政府网公开法规；结构化释义不是法律意见
+  - id: cn-regulation-ecommerce
+    layer: regulation
+    title: 中华人民共和国电子商务法
+    url: https://www.gov.cn/xinwen/2018-08/31/content_5318100.htm
+    locator: 平台经营者、商品质量和交易信息相关条款
+    license_or_note: 中国政府网公开法规；结构化释义不是法律意见
+  - id: cn-local-shenzhen-7day
+    layer: local_guidance
+    title: 深圳网络交易七日无理由退货合规指引
+    url: https://amr.sz.gov.cn/attachment/1/1718/1718060/12811895.pdf
+    locator: 退货范围、标识和处理流程相关章节
+    license_or_note: 深圳市市场监督管理局公开指引；仅作为地方合规参考
+  - id: cn-local-shanghai-platform
+    layer: local_guidance
+    title: 上海市网络交易平台商户规则合规指引
+    url: https://fw.scjgj.sh.gov.cn/wljg/bul!tozcfgDetail.action?bulletinId=2c984b4c990f0d8301991295cf740005
+    locator: 平台规则、公示和消费者权益相关章节
+    license_or_note: 上海市市场监督管理局公开指引；仅作为地方合规参考
+  - id: qwen37-rerank-api
+    layer: reference
+    title: 阿里云百炼通用文本排序模型 API 文档
+    url: https://help.aliyun.com/zh/model-studio/text-rerank-api
+    locator: 模型概览、输入限制、HTTP 调用和输出示例
+    license_or_note: 仅记录基础设施调用依据，不进入售后政策语料
+
+references:
+  - id: dch-2
+    title: DCH-2 中文客服对话数据
+    url: https://github.com/DialEval-2/DCH-2
+    usage: 仅参考中文客服表达和对话评测，不导入政策语料
+    license_or_note: 使用前按仓库许可证和数据说明核验
+  - id: csds
+    title: Chinese customer service dialogue system dataset
+    url: https://github.com/xiaolinAndy/CSDS
+    usage: 仅参考中文客服对话结构和查询改写，不导入政策语料
+    license_or_note: 使用前按仓库许可证和数据说明核验
+  - id: bitext-customer-support
+    title: Bitext Customer Support LLM chatbot training dataset
+    url: https://github.com/bitext/customer-support-llm-chatbot-training-dataset
+    usage: 仅参考 FAQ 和客服意图组织，不导入政策语料
+    license_or_note: 使用前按仓库许可证和数据说明核验
+  - id: tau3-bench
+    title: tau3-bench
+    url: https://github.com/sierra-research/tau2-bench
+    usage: 仅参考多轮 Agent、工具调用和评测任务结构，不导入其业务规则
+    license_or_note: 只借方法论；009 政策和业务身份自建
+  - id: customer-service-refund-agent
+    title: CustomerServiceRefundAgent
+    url: https://github.com/sbhaidasna/CustomerServiceRefundAgent
+    usage: 仅参考售后 Agent 工具和流程组织，不复制政策或代码
+    license_or_note: 使用前按仓库许可证核验

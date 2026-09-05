@@ -1,0 +1,154 @@
+{
+  "run_date": "2026-09-05",
+  "implementation_scope": "ServiceFlow 2.0 Step 8",
+  "deterministic_tests": {
+    "step8_narrow": {
+      "passed": 25,
+      "covered": [
+        "429 fallback",
+        "5xx fallback",
+        "timeout fallback",
+        "connection failure fallback",
+        "invalid and unparseable response fallback",
+        "primary failure then backup success",
+        "total deadline",
+        "capability incompatible backup",
+        "permission and safety failures do not fallback",
+        "circuit open skips primary",
+        "Redis token bucket and concurrency lease",
+        "Metrics label cardinality",
+        "W3C parent-child trace chain",
+        "RAG recalled/reranked/prompt document sets",
+        "audit survives trace sample ratio zero",
+        "route drift report",
+        "OpenAI-compatible gateway service mode"
+      ]
+    },
+    "full_regression_before_route_profile_extension": {
+      "passed": 270,
+      "skipped": 1,
+      "duration_seconds": 160.66,
+      "skip_reason": "existing MySQL smoke requires explicit external URL in pytest environment"
+    },
+    "full_regression_final": {
+      "passed": 271,
+      "skipped": 1,
+      "duration_seconds": 230.26,
+      "warning": "existing Starlette TestClient httpx deprecation warning"
+    }
+  },
+  "frontier_catalog": {
+    "status": 200,
+    "model_count": 18,
+    "source": "Frontier Intelligence GET /v1/models",
+    "pricing_exposed": false,
+    "price_unit_required": "Frontier diamond"
+  },
+  "frontier_capability_smoke": {
+    "calls": 4,
+    "result_file": "step8-frontier-model-capability-smoke-2026-09-05.json",
+    "deepseek-v4-flash": {
+      "json_mode": true,
+      "chinese_after_sales": true,
+      "native_tool_calling": true,
+      "input_tokens": 507,
+      "output_tokens": 652
+    },
+    "gpt-5.6-luna": {
+      "json_mode": true,
+      "chinese_after_sales": true,
+      "native_tool_calling": true,
+      "input_tokens": 704,
+      "output_tokens": 115
+    },
+    "boundary": "capability and connectivity only; no quality winner or production claim"
+  },
+  "compose_smoke": {
+    "gateway_instances": ["gateway-a", "gateway-b"],
+    "proxy_health_sequence": ["gateway-a", "gateway-b", "gateway-a", "gateway-b"],
+    "api_health": "ok",
+    "worker": "celery ready",
+    "read_only_agent_requests": [
+      {
+        "model": "deepseek-v4-flash",
+        "status": "COMPLETED",
+        "tools": ["get_order", "get_shipment"],
+        "input_tokens": 2829,
+        "output_tokens": 301
+      },
+      {
+        "gateway_a_stopped": true,
+        "model": "deepseek-v4-flash",
+        "status": "COMPLETED",
+        "tools": ["get_order", "get_shipment"],
+        "input_tokens": 2866,
+        "output_tokens": 327
+      },
+      {
+        "final_image_code": true,
+        "model": "deepseek-v4-flash",
+        "status": "COMPLETED",
+        "tools": ["get_order", "get_shipment"],
+        "input_tokens": 2978,
+        "output_tokens": 406
+      }
+    ],
+    "single_replica_failover": {
+      "surviving_instance": "gateway-b",
+      "elapsed_ms_after_timeout_fix": 2594.11,
+      "gateway_a_restored": true
+    },
+    "redis_limiter": {
+      "capacity": 2,
+      "remaining_after_acquire": 1,
+      "released": true
+    }
+  },
+  "mysql_gateway_audit": {
+    "observed_rows": 4,
+    "fields": [
+      "primary_model",
+      "selected_model",
+      "response_model",
+      "input_tokens",
+      "output_tokens",
+      "latency_ms",
+      "estimated_cost",
+      "fallback_reason",
+      "capability_compatible"
+    ],
+    "estimated_cost": null,
+    "cost_reason": "Frontier diamond prices were not exposed by the model catalog and were not guessed"
+  },
+  "real_cross_replica_trace": {
+    "trace_id": "6204dc64de8a8ec04cb53d76d041938f",
+    "api_parent_span_id": "1ba945e534d55f37",
+    "gateway_b_route": "operation-plan",
+    "gateway_b_provider_tokens": {"input": 1256, "output": 323},
+    "gateway_a_route": "final-response",
+    "gateway_a_provider_tokens": {"input": 1722, "output": 83},
+    "same_trace_across_replicas": true,
+    "mysql_audit_sequences": [22, 23],
+    "content_recorded": false
+  },
+  "bad_cases": [
+    {
+      "symptom": "proxy health request timed out for 15 seconds after gateway-a stopped",
+      "root_cause": "Nginx upstream connect timeout and next-upstream bounds were implicit",
+      "fix": "set proxy_connect_timeout=2s and proxy_next_upstream_tries=2",
+      "verification": "gateway-b returned health in 2594.11ms"
+    },
+    {
+      "symptom": "first Redis smoke used two asyncio.run calls and release failed on another event loop",
+      "root_cause": "redis asyncio connection was created on the first loop",
+      "fix": "run acquire and release in one event loop",
+      "verification": "released_after=true"
+    }
+  ],
+  "boundaries": [
+    "Both models use one Frontier base URL and credential, so this is a shared failure domain.",
+    "No real payment, logistics, compensation, or customer data was used.",
+    "No 100/300-call real evaluation was run.",
+    "Jaeger/tail sampling and production HA remain Step 10 or production-extension work."
+  ]
+}
