@@ -1,0 +1,50 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "serviceflow-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "title": "HTTP QPS",
+      "type": "timeseries",
+      "targets": [{"expr": "sum(rate(serviceflow_http_requests_total[1m]))", "legendFormat": "all"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "serviceflow-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "title": "HTTP P95",
+      "type": "timeseries",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(serviceflow_http_request_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "serviceflow-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "id": 3,
+      "title": "Service Requests by Status",
+      "type": "timeseries",
+      "targets": [{"expr": "sum(rate(serviceflow_http_requests_total[5m])) by (status)", "legendFormat": "status {{status}}"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "serviceflow-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "id": 4,
+      "title": "Worker Up",
+      "type": "stat",
+      "targets": [{"expr": "serviceflow_worker_up", "legendFormat": "worker"}]
+    }
+  ],
+  "schemaVersion": 41,
+  "tags": ["serviceflow", "2.0"],
+  "templating": {"list": []},
+  "time": {"from": "now-15m", "to": "now"},
+  "title": "ServiceFlow Overview",
+  "uid": "serviceflow-overview",
+  "version": 1
+}

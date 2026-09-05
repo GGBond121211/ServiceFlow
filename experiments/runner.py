@@ -1,16 +1,20 @@
 """实验入口：加载案例集、校验契约、按 ExperimentSpec 组织实验。
 
 Step 1 阶段只实现**加载与校验**（计划验收条件："三个案例集能由同一 runner 加载，
-案例契约错误会在 CI 中失败"）。实际执行 V2 案例需要 Step 5-7 的能力，届时再接。
+案例契约错误会在 CI 中失败"）。Step 9 增加 V2 就绪性审计和结果评分入口；
+它只消费真实执行证据，不为缺失证据补造通过结果。
 
 用法：
     uv run python experiments/runner.py list
     uv run python experiments/runner.py validate
+    uv run python experiments/runner.py audit-v2 [audit-result.json]
+    uv run python experiments/runner.py score-v2 <raw-results.jsonl> [scored.jsonl]
     uv run python experiments/runner.py spec-template > experiments/results/my-exp/spec.yaml
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import pathlib
 import sys
@@ -23,13 +27,17 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def _case_models() -> tuple[Any, Any]:
     """延迟导入：本脚本可在 backend 之外运行，需先把 src 加进 sys.path。"""
-    src = str(ROOT / "backend" / "src")
-    if src not in sys.path:
-        sys.path.insert(0, src)
+    _add_source_path()
     from serviceflow.evaluation.case_v2 import EvalCaseV2
     from serviceflow.evaluation.models import EvalCase
 
     return EvalCase, EvalCaseV2
+
+
+def _add_source_path() -> None:
+    src = str(ROOT / "backend" / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
 
 
 V1_CORE = ROOT / "tests" / "eval_cases" / "serviceflow_v1.jsonl"
@@ -134,11 +142,80 @@ decision: ""             # 结论回写 DECISIONS.md 第几行"""
     )
 
 
+def cmd_audit_v2() -> None:
+    _add_source_path()
+    from serviceflow.evaluation.dataset_audit import audit_v2_dataset, write_v2_audit
+
+    audit = audit_v2_dataset()
+    if len(sys.argv) >= 3:
+        write_v2_audit(audit, pathlib.Path(sys.argv[2]))
+    print(json.dumps(audit.model_dump(mode="json"), ensure_ascii=False, indent=2))
+    if audit.status != "ready":
+        raise SystemExit(2)
+
+
+def cmd_score_v2() -> None:
+    if len(sys.argv) < 3:
+        raise SystemExit(
+            "用法：uv run python experiments/runner.py score-v2 "
+            "<raw-results.jsonl> [scored.jsonl]"
+        )
+    _add_source_path()
+    from serviceflow.evaluation.dataset_audit import audit_v2_dataset
+    from serviceflow.evaluation.v2_runner import (
+        V2Execution,
+        run_v2_evaluation,
+        write_v2_results,
+    )
+
+    cases = {case.id: case for case in load_all()["v2"]}
+    input_path = pathlib.Path(sys.argv[2])
+    executions: dict[str, Any] = {}
+    selected_cases = []
+    seen: set[str] = set()
+    for line in input_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        payload = json.loads(line)
+        case_id = str(payload["case_id"])
+        if case_id in seen:
+            raise SystemExit(f"重复执行结果：{case_id}")
+        if case_id not in cases:
+            raise SystemExit(f"结果中的未知案例：{case_id}")
+        execution_payload = payload.get("execution", payload)
+        executions[case_id] = V2Execution.model_validate(execution_payload)
+        selected_cases.append(cases[case_id])
+        seen.add(case_id)
+    if not selected_cases:
+        raise SystemExit("输入结果为空")
+
+    async def replay(case: Any) -> V2Execution:
+        return executions[case.id]
+
+    run = asyncio.run(
+        run_v2_evaluation(
+            cases=selected_cases,
+            executor=replay,
+            dataset_version=audit_v2_dataset().dataset_version,
+            experiment_id="score-v2",
+            commit="unknown",
+        )
+    )
+    if len(sys.argv) >= 4:
+        write_v2_results(run.case_results, pathlib.Path(sys.argv[3]))
+    print(json.dumps(run.summary.model_dump(mode="json"), ensure_ascii=False, indent=2))
+
+
 def main() -> None:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
-    {"list": cmd_list, "validate": cmd_validate, "spec-template": cmd_spec_template}.get(
-        cmd, cmd_list
-    )()
+    commands = {
+        "list": cmd_list,
+        "validate": cmd_validate,
+        "audit-v2": cmd_audit_v2,
+        "score-v2": cmd_score_v2,
+        "spec-template": cmd_spec_template,
+    }
+    commands.get(cmd, cmd_list)()
 
 
 if __name__ == "__main__":

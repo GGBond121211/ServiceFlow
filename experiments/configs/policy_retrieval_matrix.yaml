@@ -1,4 +1,4 @@
-# 检索策略实验矩阵 —— 对应决策台账第 3-6 行
+# 检索策略实验矩阵 —— Step 9 E1/E2/E3 的登记起点
 # 关键要求（计划补充 R）：必须包含"纯向量"对照档。
 # 面试高频题"为什么纯向量检索在你的场景下不行"只能用自己的实测数据回答，
 # 不能引用外部文章结论。
@@ -12,14 +12,29 @@ control_arm:
 
 dimensions:
   retrieval_mode: [pure_vector, bm25_only, hybrid]
-  rrf_weight:     [0.3, 0.5, 0.7]        # 仅 hybrid 档生效
+  rrf_weight:     [0.3, 0.5, 0.7]        # 仅 hybrid 档生效；E1 结束且代码参数化后再启用
   chunk_strategy: [policy_clause_boundary, token_256, token_512, token_1024]
   overlap:        [0.0, 0.1, 0.2]
-  top_k:          [10, 30, 50]
+  top_k:          [3, 5, 8, 10]          # 30/50 只留给合成 ×10 规模实验
   rerank:         [off, cross_encoder]
   rerank_top_n:   [5, 10]
-  query_rewrite:  [off, on]
+  query_rewrite:  [off]                  # on：当前未实现，延期
   metadata_filter: [off, tenant_region_effective_time]
+
+# metadata_filter 不是普通“调优旋钮”：
+# tenant/region/effective-time 过滤是 Citation Validity 与 Policy Version Filter 的 G 门槛。
+# off 仅用于纯对照，任何候选发布配置都必须通过 tenant_region_effective_time 门槛。
+gates:
+  metadata_filter_required: tenant_region_effective_time
+  filter_metrics:
+    - citation_validity_rate
+    - policy_version_filter_accuracy
+
+deferred:
+  - rrf_weight_until_hybrid_baseline
+  - query_rewrite_until_runtime_implementation
+  - top_k_30_50_until_synthetic_x10_scale
+  - overlap_if_policy_clause_boundary_wins
 
 query_set_requirements:
   # Embedding / 检索 A/B 的查询集必须覆盖这些类型，否则结论不成立
@@ -40,3 +55,4 @@ discipline:
   - 每次只改一个维度（计划 Step 9）
   - 结论写入 decision_records/policy_rag_chunking.md 并追加到 DECISIONS.md
   - 参数没有万能默认值；Chunk 大小必须用本项目的问题集比较后再定
+  - metadata filter 先过正确性门槛，再比较 Recall/MRR/P95；不能用关闭过滤换取表面召回

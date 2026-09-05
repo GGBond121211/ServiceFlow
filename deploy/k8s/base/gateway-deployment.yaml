@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: serviceflow
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: gateway
+          image: serviceflow:2.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["uvicorn", "serviceflow.infrastructure.gateway_server:app", "--host", "0.0.0.0", "--port", "8010"]
+          ports:
+            - name: http
+              containerPort: 8010
+          envFrom:
+            - configMapRef:
+                name: serviceflow-config
+            - secretRef:
+                name: serviceflow-secrets
+          env:
+            - name: SERVICEFLOW_GATEWAY_INSTANCE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: SERVICEFLOW_GATEWAY_BACKUP_MODEL
+              value: gpt-5.6-luna
+            - name: SERVICEFLOW_GATEWAY_MAX_CONCURRENCY
+              value: "8"
+            - name: SERVICEFLOW_GATEWAY_DEADLINE_S
+              value: "20"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 1, memory: 1Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: serviceflow
+spec:
+  selector:
+    app: gateway
+  ports:
+    - name: http
+      port: 8010
+      targetPort: http

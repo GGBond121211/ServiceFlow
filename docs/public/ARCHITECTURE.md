@@ -109,8 +109,10 @@ V1 Compose 只有 `api` 和 `mysql`。当前 2.0 本地 Compose 包含：
 - `qdrant`：Policy RAG 的 HNSW 向量检索，异常时只影响证据检索路径。
 - `worker`：Celery 5.6 + Redis broker，当前投递 SQL Outbox；以非 root 用户运行。
 - `gateway-a` / `gateway-b`：两个本地无状态 LLM Gateway 副本；共享 Redis、MySQL 和 Frontier 故障域；
-- `gateway-proxy`：Nginx 本地反向代理，仅映射到宿主机回环地址 `127.0.0.1:8010`。
+- `gateway-proxy`：Nginx 本地反向代理，仅映射到宿主机回环地址 `127.0.0.1:8010`；
+- `otel-collector` / `jaeger`：本地 OTLP Trace 接收和 UI；
+- `prometheus` / `grafana`：本地低基数指标存储和面板。
 
-OpenTelemetry 当前使用内存 exporter 与可配置头部采样，并有真实 API→Gateway→MCP Tool→数据库→Outbox→Worker 同 Trace 集成测试；Collector、Jaeger、Prometheus/Grafana 和尾部采样仍属于 Step 10。SSE/Streaming 尚未实现。
+OpenTelemetry 在测试中使用内存 exporter；Compose 中额外启用 OTLP HTTP exporter，经 Collector 导出到 Jaeger。指标由 API、两个 Gateway 和 Worker 暴露给 Prometheus。Collector/Jaeger/Prometheus/Grafana 是本地演示组件，不代表生产持久化、容量或 HA；尾部采样仍未实现。SSE/Streaming 尚未实现。
 
 前端是静态 HTML/CSS/JavaScript 文件，开发时由本机 Python 静态服务器提供，默认端口 `5173`，不与后端源码互相导入。

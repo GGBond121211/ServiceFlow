@@ -6,8 +6,9 @@ from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.propagate import extract, inject
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from serviceflow.infrastructure.trace_context import validate_traceparent
@@ -34,9 +35,29 @@ class Telemetry:
     @classmethod
     def in_memory(cls, *, sample_ratio: float) -> "Telemetry":
         exporter = InMemorySpanExporter()
-        provider = TracerProvider(sampler=parent_consistent_sampler(sample_ratio))
+        provider = TracerProvider(
+            sampler=parent_consistent_sampler(sample_ratio),
+            resource=Resource.create(
+                {"service.name": os.getenv("OTEL_SERVICE_NAME", "serviceflow")}
+            ),
+        )
         provider.add_span_processor(SimpleSpanProcessor(exporter))
         return cls(provider, exporter)
+
+    @classmethod
+    def from_env(cls, *, sample_ratio: float) -> "Telemetry":
+        telemetry = cls.in_memory(sample_ratio=sample_ratio)
+        endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+        if endpoint:
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+            telemetry._provider.add_span_processor(
+                BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint))
+            )
+        return telemetry
+
+    def shutdown(self) -> None:
+        self._provider.shutdown()
 
     @contextmanager
     def span(

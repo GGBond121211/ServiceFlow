@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from time import perf_counter
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -14,6 +14,10 @@ from serviceflow.api.routes import router
 from serviceflow.config import get_policy_retriever, get_redis_store
 from serviceflow.infrastructure.database import create_database_schema
 from serviceflow.infrastructure.otel import Telemetry
+from serviceflow.infrastructure.prometheus_metrics import (
+    prometheus_payload,
+    record_http_request,
+)
 from serviceflow.infrastructure.timing import (
     add_timing,
     collect_request_timings,
@@ -31,6 +35,7 @@ def create_app(
     telemetry: Telemetry | None = None,
 ) -> FastAPI:
     owns_session_factory = session_factory is None
+    owns_telemetry = telemetry is None
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -39,6 +44,8 @@ def create_app(
         yield
         if owns_session_factory:
             await application.state.agent_session_factory.kw["bind"].dispose()
+        if owns_telemetry:
+            application.state.telemetry.shutdown()
 
     application = FastAPI(title="ServiceFlow", version="0.1.0", lifespan=lifespan)
     application.add_middleware(
@@ -65,6 +72,11 @@ def create_app(
                 started_at = perf_counter()
                 response = await call_next(request)
                 server_ms = (perf_counter() - started_at) * 1000
+                record_http_request(
+                    method=request.method,
+                    status=response.status_code,
+                    duration_seconds=server_ms / 1000,
+                )
                 add_timing("server_ms", server_ms)
                 response.headers["Server-Timing"] = server_timing_header()
                 response.headers["X-ServiceFlow-Server-Ms"] = str(
@@ -75,7 +87,7 @@ def create_app(
                 )
                 return response
 
-    application.state.telemetry = telemetry or Telemetry.in_memory(
+    application.state.telemetry = telemetry or Telemetry.from_env(
         sample_ratio=float(os.getenv("SERVICEFLOW_TRACE_SAMPLE_RATIO", "1"))
     )
     application.state.agent_model = model
@@ -88,6 +100,12 @@ def create_app(
 
     application.state.agent_graph = None
     application.include_router(router)
+
+    @application.get("/metrics", include_in_schema=False)
+    async def metrics() -> Response:
+        payload, content_type = prometheus_payload()
+        return Response(content=payload, media_type=content_type)
+
     application.mount(
         "/evaluation",
         StaticFiles(directory=EVALUATION_DIR, check_dir=False),

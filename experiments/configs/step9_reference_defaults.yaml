@@ -1,0 +1,164 @@
+# Step 9 外部成熟默认值参考
+#
+# 这里的值是“实验起点参考”，不是 ServiceFlow 的已验证最优值。
+# project_start 表示本项目在本轮实验前暂时采用的值；它不会自动改写运行时代码。
+# source_checked_at: 2026-09-05
+
+version: step9-reference-defaults-v1
+status: reference_only
+rules:
+  - 外部组件默认值只用于建立可解释起点，不能替代本项目固定集上的对照实验
+  - 安全、授权、确认、审批、幂等和 UNKNOWN 语义不因外部默认值放宽
+  - 不同单位或语义的参数不能直接横向移植，例如 loop steps 不等于 tool calls
+
+parameters:
+  bm25:
+    k1:
+      project_parameter: bm25_k1
+      reference_default: 1.2
+      project_start: 1.2
+      source: https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity
+      note: Elasticsearch/Lucene BM25 的官方默认 k1；当前实现已一致
+    b:
+      project_parameter: bm25_b
+      reference_default: 0.75
+      project_start: 0.75
+      source: https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity
+      note: Elasticsearch/Lucene BM25 的官方默认 b；当前实现已一致
+
+  rrf:
+    rank_constant:
+      project_parameter: rrf_rank_constant
+      reference_default: 60
+      project_start: 60
+      source: https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion
+      note: 当前代码的 _RRF_K=60 已一致；当前代码的 semantic=0.8、bm25=1.0 是项目自定义权重，不是官方默认
+    weights:
+      reference_default: equal
+      project_start: current_bm25_1_semantic_0_8
+      source: https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion
+      note: 是否加权以及权重范围必须等代码参数化后再做单变量实验
+
+  qdrant_hnsw:
+    m:
+      project_parameter: hnsw_m
+      reference_default: 16
+      project_start: 16
+      source: https://qdrant.tech/documentation/manage-data/indexing/
+      note: 当前实现已一致
+    ef_construct:
+      project_parameter: hnsw_ef_construction
+      reference_default: 100
+      project_start: 128
+      source: https://qdrant.tech/documentation/manage-data/indexing/
+      note: 当前 collection 使用 128；切换到 100 需要重建或新建 collection，不能只改登记表
+    hnsw_ef:
+      project_parameter: hnsw_ef_search
+      reference_default: 100
+      project_start: 64
+      source: https://qdrant.tech/documentation/manage-data/indexing/
+      note: Qdrant 文档说明搜索 ef 默认等于 ef_construct；103 条语料规模下优先确认是否实际走 HNSW
+    full_scan_threshold_kb:
+      project_parameter: hnsw_full_scan_threshold
+      reference_default: 10000
+      project_start: 10000
+      source: https://qdrant.tech/documentation/manage-data/indexing/
+      note: 小于阈值时可能选择 full scan；这不是“强制启用 HNSW”的开关
+    indexing_threshold:
+      project_parameter: indexing_threshold
+      reference_default: 20000
+      project_start: 20000
+      source: https://qdrant.tech/documentation/manage-data/storage/
+      note: 单位和版本语义需以当前 Qdrant API 校验；不要与 full_scan_threshold_kb 混为同一参数
+
+  chunking:
+    strategy:
+      reference_default: no_universal_default
+      project_start: policy_clause_boundary
+      sources:
+        - https://docs.langchain.com/oss/python/integrations/splitters/recursive_text_splitter
+        - https://github.com/run-llama/llama_index/blob/main/llama-index-core/llama_index/core/node_parser/text/sentence.py
+        - https://javaguide.cn/ai/rag/rag-document-processing.html
+      note: LangChain 示例/源码常见 4000 字符与 200 字符 overlap；LlamaIndex SentenceSplitter 当前源码默认 1024 token 与 200 token。政策条款优先保留法律效力边界，不能直接套库默认
+    overlap:
+      reference_default: task_dependent
+      project_start: 0
+      source: https://javaguide.cn/ai/rag/rag-document-processing.html
+      note: 当前政策记录平均内容长度约 58 字符，token chunk 和 overlap 在该语料上基本不可辨识
+
+  rerank:
+    candidate_k:
+      reference_default: 30_to_100_for_coarse_recall
+      project_start: 10
+      source: https://javaguide.cn/ai/rag/rag-optimization.html
+      note: 这是工程经验范围，不是组件硬默认；当前 103 条短文档先保留 10，避免把小集合的候选数伪装成成熟默认
+    final_n:
+      reference_default: 5_to_10
+      project_start: 5
+      source: https://javaguide.cn/ai/rag/rag-optimization.html
+      note: 需与上下文 token、引用有效率和延迟一起测
+
+  agent_loop:
+    max_iterations:
+      reference_default: 15
+      project_start: 5
+      source: https://github.com/langchain-ai/langchain/blob/master/libs/langchain/langchain_classic/agents/agent.py
+      note: LangChain AgentExecutor 的通用默认是 15；ServiceFlow 采用更紧的 5 步是副作用场景的安全起点，不代表通用 Agent 默认
+    max_tool_calls:
+      reference_default: no_universal_default
+      project_start: 12
+      source: https://javaguide.cn/ai/ai-core-concepts.html
+      note: 迭代次数、工具调用次数、总 deadline 必须分别计数
+
+  transport_and_retry:
+    sdk_max_retries:
+      reference_default: 2
+      project_start: 0_at_gateway_owned_client
+      source: https://github.com/openai/openai-python/blob/main/src/openai/_constants.py
+      note: openai-python 的默认是 2；本项目 Gateway 已有 retry/fallback，必须显式避免 SDK 隐式重试污染 attempts、成本和 deadline。需要代码契约测试后才算生效
+    network_timeout_seconds:
+      reference_default: 5
+      project_start: 5
+      source: https://www.python-httpx.org/advanced/timeouts/
+      note: HTTPX 的 5 秒是网络不活动默认，不等于业务操作总 deadline
+
+  async_recovery:
+    celery_max_retries:
+      reference_default: 3
+      project_start: 3
+      source: https://docs.celeryq.dev/en/stable/userguide/tasks.html
+      note: Celery 的 max_retries=3 表示重试次数语义，不能直接等同于本项目 reconcile max_attempts=3
+    celery_default_retry_delay_seconds:
+      reference_default: 180
+      project_start: custom_exponential_capped_30
+      source: https://docs.celeryq.dev/en/stable/userguide/tasks.html
+      note: 当前 Worker 明确使用业务所需的短指数退避，不把 Celery 三分钟默认移植到本地演示 deadline
+
+  circuit_breaker:
+    reference_profile:
+      failure_rate_threshold_percent: 50
+      sliding_window_size: 100
+      wait_duration_open_seconds: 60
+      source: https://resilience4j.readme.io/docs/circuitbreaker
+      note: 这是 Resilience4j 的组件默认模型；当前 ServiceFlow 是 consecutive_failure_count=3、recovery=30s 的轻量实现，语义不同，不直接替换
+
+  tracing:
+    sampler:
+      reference_default: parentbased_always_on
+      project_start: configurable_head_ratio_1
+      source: https://opentelemetry.io/docs/specs/otel/trace/sdk/
+      note: Step 9 只验证当前头部采样与父子一致性；尾部采样依赖 Step 10 Collector/Jaeger
+
+  evaluation:
+    agent_loop_trials:
+      reference_default: at_least_3
+      project_start: 3_for_golden_and_holdout
+      source: https://arxiv.org/abs/2406.12045
+      note: τ-bench 报告至少 3 trials，并用 pass^k 表示同一任务多次全部成功；本项目只借方法论，不声称跑过 τ-bench
+
+non_numeric_defaults:
+  context_budget: no_universal_default
+  redis_ttl: choose_from_staleness_tolerance_and_invalidation
+  confirmation_ttl: business_and_security_policy
+  gateway_bucket_and_concurrency: workload_dependent
+  fpr_threshold: measurement_policy_not_component_default

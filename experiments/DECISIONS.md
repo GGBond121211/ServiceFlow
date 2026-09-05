@@ -32,6 +32,18 @@
 | 15 | Gateway Streaming 与等待队列 | Streaming / 非流式；有界等待 / fail-fast | **本轮不实现 Streaming，`stream=true` 明确 422；队列上限=0，并发满立即 backpressure** | `step8-1-hardening-2026-09-05.json`：服务测试覆盖 Streaming 拒绝和 queue_limit=0；31 项窄测、Compose 实况通过。结构化 Tool Call 必须完整校验后才执行，排队会占住 HTTP 连接且双副本共享队列需额外协调 | 当前没有 TTFT 实测和流式体验；突发并发会被立即拒绝，不做短暂削峰 | Step 10 实现 SSE 用户体验或真实压力测试证明短队列能提高成功率且不破坏 deadline | 删除 422 分支并实现流事件协议；队列仍必须有上限和超时 | ● | 8 |
 | 14 | 可观测后端选型 | Jaeger / Langfuse / 自建 | — | — | — | — | — | ○ | 10 |
 
+### Step 9 初始化记录（2026-09-05）
+
+> 本节记录的是“实验能否开始”的初始化判断，不是把外部默认值写成项目最优解。质量结论仍须来自后续固定数据、单变量实验和 `results/` 原始结果。
+
+| # | 决策点 | 候选方案 | 选择 | 依据（指标 + 数据出处） | 代价 | 什么情况下会改 | 回滚方式 | 状态 | Step |
+|---|---|---|---|---|---|---|---|:--:|:--:|
+| I9-1 | 外部成熟默认值的使用方式 | 直接采用 / 作为参考起点后实测 / 不记录 | **作为 2.0 baseline 的参考起点** | `experiments/results/step9-initialization-2026-09-05.json` 与 `experiments/configs/step9_reference_defaults.yaml`：BM25 `k1=1.2,b=0.75`、RRF `rank_constant=60`、Qdrant `M=16` 等均标为 reference-only；没有把组件默认值冒充项目最优 | 后续仍需为质量结论付出实验成本 | 2.1 固定集显示质量、延迟、安全或成本不满足门槛 | 保留 `step9_baseline_profile.yaml` 的起点并切换单项配置 | ● | 9 |
+| I9-2 | V2 评测集合是否已具备全量实验条件 | 立即跑全部指标 / 先修正评测基础设施 / 2.0 只做契约与低成本 smoke | **2.0 以现有契约、审计和 smoke 收口；全量实验延期** | `experiments/decision_records/step9_dataset_audit.md` 与 `step9-baseline-closure-2026-09-05.json`：132 条可做契约/回归与 Bad Case，但 dev split、完整逐案质量 Runner、政策映射和过程评分仍不足 | 2.0 不产生总体质量或参数最优结论；后续仍需维护数据/Runner | 2.1 完成 P0 门槛且有预算时再开启质量 A/B | 保留当前 JSONL、初始化审计和 V1 冻结基线 | ● | 9 |
+| I9-3 | Step 9 检索矩阵范围 | 原笛卡尔积 / E1→E3 单变量 / 2.0 参考起点 + smoke | **2.0 采用参考起点，重型矩阵延期到 2.1+** | `experiments/configs/step9_baseline_profile.yaml`：BM25 `1.2/0.75`、RRF `60`、Qdrant `M=16`、条款边界/overlap `0`、rerank `10→5`；`policy_retrieval_matrix.yaml` 已收窄但本轮不启动付费或全量矩阵 | 不能回答“哪个参数最优”；保留可解释、可回滚的起点 | 数据规模、Runner 和预算满足后再增加单变量或交互矩阵 | 回到条款边界、`K=5`、Hybrid + exact fallback | ● | 9 |
+| I9-4 | 2.0 Step 9 发布基线 | 全量质量优化后再进入 Step 10 / 参考默认值与现有证据收口 / 跳过 Step 9 | **参考默认值 + 已有契约/Smoke，作为 2.0 工程基线** | `experiments/results/step9-baseline-closure-2026-09-05.json`：V2 132 条、Policy 103 文档/28 查询、V2 契约 19 项；此前 Step 8.1 回归 282 passed / 1 skipped。该数字用于工程可运行性与审计范围，不是 V2 总体质量 | 参数仍可能次优，2.1 需要新增数据、Runner 和模型额度 | 发布后发现基线无法运行、硬门禁失败，或 2.1 有足够数据证明替代方案更好 | 按 baseline profile 回退单项参数，保留 V1 冻结基线 | ● | 9 |
+| I9-5 | 重型实验在 2.0 的处理 | 现在全量执行 / 删除 / **登记为 2.1+ backlog** | **延期，不作为 2.0 发布阻断** | `step9_dataset_audit.md`：当前没有 dev split，工具期望 0/132，状态序列仅 4/132，FPR probe 9 条，Policy 文本平均约 58.5 字符；继续跑会产生高成本但低辨识度结论 | 暂不获得总体质量、FPR 上界或最优参数声明 | 2.1 补齐数据/Runner/预算后按单变量顺序执行 | 不修改冻结案例；只新增版本化派生集和原始结果 | ● | 9 |
+
 ### 已定论的决策（准备阶段，2026-09-02）
 
 | # | 决策点 | 候选方案 | 选择 | 依据 | 代价 | 什么情况下会改 | 回滚方式 | 状态 |

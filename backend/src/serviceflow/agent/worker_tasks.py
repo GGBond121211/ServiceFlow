@@ -8,7 +8,7 @@ from serviceflow.infrastructure.event_log import EventLog
 from serviceflow.infrastructure.otel import Telemetry
 from serviceflow.infrastructure.outbox import Outbox, OutboxMessage
 
-telemetry = Telemetry.in_memory(
+telemetry = Telemetry.from_env(
     sample_ratio=float(os.getenv("SERVICEFLOW_TRACE_SAMPLE_RATIO", "1"))
 )
 

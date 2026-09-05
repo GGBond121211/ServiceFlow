@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: serviceflow-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: [api:8000]
+
+  - job_name: serviceflow-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: [gateway-a:8010, gateway-b:8010]
+
+  - job_name: serviceflow-worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: [worker:9101]

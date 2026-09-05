@@ -57,7 +57,10 @@ class OpenAIModelProvider:
 
     @classmethod
     def from_credentials(cls, key: str, *, api_key: str, base_url: str) -> "OpenAIModelProvider":
-        return cls(key, client=AsyncOpenAI(api_key=api_key, base_url=base_url))
+        return cls(
+            key,
+            client=AsyncOpenAI(api_key=api_key, base_url=base_url, max_retries=0),
+        )
 
     async def complete(
         self, profile: ModelProfile, request: ProviderModelRequest

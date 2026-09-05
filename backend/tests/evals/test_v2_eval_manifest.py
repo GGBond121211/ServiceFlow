@@ -198,7 +198,7 @@ def test_unknown_info_coverage_is_meaningful(cases: list[EvalCaseV2]) -> None:
 
     参照 τ²-bench retail 的实测比例（89/114 = 78%）。009 不对标 78%——它那么高有
     结构性原因（政策要求每次对话开头用 email 或 姓名+邮编 验证身份，任务常设定
-    用户不记得邮箱）。009 的用户身份来自会话，无此环节，故门槛定在 25%。
+    用户不记得邮箱）。009 的用户身份来自会话，无此环节，故门槛定在 30%。
     """
     with_unknown = sum(1 for c in cases if c.user_scenario.unknown_info)
     ratio = with_unknown / len(cases)

@@ -154,6 +154,20 @@ uv run python -m serviceflow.evaluation.real_stress `
 数据。报告额外区分 `business_mismatch`、HTTP 错误、限流、超时和传输错误，避免把
 “模型理解错了”和“服务根本没响应”混成一个失败数字。
 
+## 2.0 Step 9 baseline 边界
+
+2.0 Step 9 已完成工程 baseline 收口，但没有把参考默认值写成质量最优结论：
+
+- V2 当前为 132 条，Policy RAG 为 103 条文档和 28 条查询；holdout 16 条保持锁定；
+- BM25 `1.2/0.75`、RRF `60`、Qdrant `M=16`、政策条款边界、rerank `10→5` 和 Tool Loop `5/12`
+  记录在 `experiments/configs/step9_baseline_profile.yaml`；
+- `reference-only`、`measured-smoke-only` 和 `untested` 分开标记；
+- dev/regression 拆分、完整 V2 逐案质量 Runner、FPR 扩展、模型/参数 A/B、Policy 语料扩充和大规模
+  并发实验延期到 2.1+。
+
+因此，本项目不会声称“V2 总体准确率已证明”“某模型客观最优”“总体 FPR ≤2%”或“生产可靠性已验证”。
+普通 CI 使用 Fake/确定性测试；真实模型评测必须显式触发并单独报告模型、数据集、Token、延迟和成本。
+
 数据库改造需要用独立的 SQL 基准量化。下面的实验仍连接真实 MySQL，但不调用模型，
 这样可以把联合索引和 `LIMIT 1` 的收益从模型网络耗时中隔离出来：
 

@@ -104,6 +104,7 @@ class OpenAICompatibleModel:
             client=AsyncOpenAI(
                 api_key=values["SERVICEFLOW_API_KEY"],
                 base_url=values["SERVICEFLOW_BASE_URL"],
+                max_retries=0,
             ),
             model=model_name,
             thinking_mode=thinking_mode,

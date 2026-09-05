@@ -1,0 +1,49 @@
+name: ServiceFlow real evaluation (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      output_stem:
+        description: "Local output stem for the evaluation artifact"
+        required: true
+        default: serviceflow-real-eval
+
+concurrency:
+  group: serviceflow-real-eval
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  real-eval:
+    runs-on: ubuntu-latest
+    environment: real-eval
+    env:
+      SERVICEFLOW_API_KEY: ${{ secrets.SERVICEFLOW_API_KEY }}
+      SERVICEFLOW_BASE_URL: ${{ vars.SERVICEFLOW_BASE_URL }}
+      SERVICEFLOW_MODEL: ${{ vars.SERVICEFLOW_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --locked
+      - name: Run explicitly approved real-model evaluation
+        working-directory: backend
+        run: |
+          test -n "$SERVICEFLOW_API_KEY"
+          uv run serviceflow eval \
+            --cases ../tests/eval_cases/serviceflow_v1.jsonl ../tests/eval_cases/serviceflow_v1_complex_60.jsonl \
+            --output ../work/real-eval \
+            --output-stem "${{ inputs.output_stem }}"
+      - name: Upload real evaluation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: serviceflow-real-eval
+          path: work/real-eval

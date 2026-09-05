@@ -2,11 +2,11 @@ import json
 import os
 from contextlib import asynccontextmanager
 from secrets import compare_digest
-from time import time
+from time import perf_counter, time
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 
 from serviceflow.agent.model import ModelResult, NativeModelResult
 from serviceflow.api.dependencies import SessionFactory
@@ -19,6 +19,10 @@ from serviceflow.infrastructure.gateway_context import (
 from serviceflow.infrastructure.gateway_errors import GatewayErrorClass, GatewayFailure
 from serviceflow.infrastructure.model_gateway import ModelGateway, build_model_gateway_from_env
 from serviceflow.infrastructure.otel import Telemetry
+from serviceflow.infrastructure.prometheus_metrics import (
+    prometheus_payload,
+    record_http_request,
+)
 
 
 def create_gateway_app(
@@ -26,7 +30,7 @@ def create_gateway_app(
     *,
     internal_key: str | None = None,
 ) -> FastAPI:
-    telemetry = Telemetry.in_memory(
+    telemetry = Telemetry.from_env(
         sample_ratio=float(os.getenv("SERVICEFLOW_TRACE_SAMPLE_RATIO", "1"))
     )
 
@@ -59,7 +63,13 @@ def create_gateway_app(
         except ValueError:
             span = telemetry.span("gateway.http")
         with span:
+            started_at = perf_counter()
             response = await call_next(request)
+            record_http_request(
+                method=request.method,
+                status=response.status_code,
+                duration_seconds=(perf_counter() - started_at),
+            )
             response.headers["traceparent"] = telemetry.current_traceparent()
             response.headers["x-serviceflow-gateway-instance"] = os.getenv(
                 "SERVICEFLOW_GATEWAY_INSTANCE", "local"
@@ -97,6 +107,11 @@ def create_gateway_app(
         _authorize(request, application.state.internal_key)
         gateway_metrics = getattr(application.state.gateway, "metrics", None)
         return gateway_metrics.snapshot() if gateway_metrics is not None else {"routes": {}}
+
+    @application.get("/metrics", include_in_schema=False)
+    async def prometheus_metrics() -> Response:
+        payload, content_type = prometheus_payload()
+        return Response(content=payload, media_type=content_type)
 
     @application.post("/v1/chat/completions")
     async def chat_completions(request: Request) -> dict[str, object]:

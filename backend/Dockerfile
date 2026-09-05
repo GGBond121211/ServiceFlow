@@ -10,7 +10,7 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY src ./src
 COPY tests/fixtures ./tests/fixtures
 
-RUN useradd --create-home serviceflow
+RUN useradd --uid 1000 --create-home serviceflow
 
 ENV PATH="/app/.venv/bin:$PATH" PYTHONPATH="/app/src"
 

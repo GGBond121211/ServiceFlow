@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import serviceflow.infrastructure.provider_model_adapters as provider_adapters
 from serviceflow.agent.model import (
     ModelConfigurationError,
     OpenAICompatibleModel,
@@ -29,6 +30,43 @@ def test_missing_environment_returns_clear_configuration_error(
 
     with pytest.raises(ModelConfigurationError, match="SERVICEFLOW_API_KEY"):
         OpenAICompatibleModel.from_env()
+
+
+def test_environment_client_disables_sdk_implicit_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class CapturingClient:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr("serviceflow.agent.model.AsyncOpenAI", CapturingClient)
+    monkeypatch.setenv("SERVICEFLOW_API_KEY", "test-key")
+    monkeypatch.setenv("SERVICEFLOW_BASE_URL", "https://example.test/v1")
+    monkeypatch.setenv("SERVICEFLOW_MODEL", "test-model")
+
+    OpenAICompatibleModel.from_env()
+
+    assert captured["max_retries"] == 0
+
+
+def test_provider_client_disables_sdk_implicit_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class CapturingClient:
+        def __init__(self, **kwargs: object) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr(provider_adapters, "AsyncOpenAI", CapturingClient)
+
+    provider_adapters.OpenAIModelProvider.from_credentials(
+        "frontier", api_key="test-key", base_url="https://example.test/v1"
+    )
+
+    assert captured["max_retries"] == 0
 
 
 @pytest.mark.asyncio
