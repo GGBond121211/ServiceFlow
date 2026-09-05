@@ -1,6 +1,24 @@
 # ServiceFlow
 
+[![CI](https://github.com/GGBond121211/ServiceFlow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GGBond121211/ServiceFlow/actions/workflows/ci.yml)
+
+> 当前主线是 **ServiceFlow 2.0 baseline**：一个面向模拟电商售后的、可运行的单 Agent 业务流程展示项目。
+> 2.0 优先完成可运行闭环、工程验证和部署演示；质量参数的重型 A/B 实验延期到 2.1+，不把参考默认值描述成最优结论。
+
 ServiceFlow 是一个面向模拟电商售后的单 Agent 工作流。用户用自然语言描述订单问题，系统提取意图、查询订单、匹配确定性业务规则，并通过受限业务工具更新 MySQL 中的模拟状态。
+
+## 2.0 做了什么
+
+2.0 在保留“模型理解语言、Python 政策做业务约束、数据库终态做事实来源”这一核心边界的基础上，补齐了一条可观测、可恢复、可部署的 Agent 工程闭环：
+
+- **Tool Loop + MCP**：模型可以在受限工具注册表中选择工具；Tool Executor 仍负责风险、确认和审批门禁，模型不能直接写数据库或拼接 SQL；
+- **业务状态与恢复**：Session、Case、Operation、Run、SQL checkpoint、租户/资源授权、确认/审批、幂等、UNKNOWN 对账、Webhook/Outbox 和 Redis/Celery Worker；
+- **Policy RAG**：BM25、语义检索、Qdrant/HNSW、RRF 和候选重排组成政策检索链，政策层级与来源边界单独记录；
+- **LLM Gateway**：统一模型路由、能力过滤、有界重试/fallback、deadline、熔断、限流和低基数运行指标；
+- **可观测与部署**：OpenTelemetry → Collector → Jaeger、Prometheus、Grafana、双 Gateway 故障切换、Docker Compose 和本地 Kubernetes manifest；
+- **CI/CD**：Push/PR 自动运行代码检查、测试、确定性评测清单和容器构建；推送 `v*.*.*` 标签时构建并发布不可变 GHCR 镜像，CD 也提供不推送镜像的手动 dry-run。
+
+2.0 是面向学习、作品集和面试演示的本地模拟系统，不连接真实商城、支付、物流或客服系统。Compose 观测栈和 Kubernetes manifest 是可复现演示能力，不等于生产 HA、生产 IAM、生产容量或生产 SLA。
 
 一条完整的 Agent 业务闭环：
 
@@ -35,6 +53,8 @@ flowchart LR
 ```
 
 模型不能直接修改订单，也不能直接拼接 SQL。模型只输出结构化意图；是否合法、调用什么工具以及数据库最终状态，都由 Python 业务规则、应用服务和数据库共同约束。
+
+2.0 增加了 Native Tool Loop + MCP 路径，使 ToolResult 可以影响模型的下一步选择；旧的固定图路径保留为兼容路径。无论走哪条路径，政策、授权、确认/审批、幂等和最终数据库状态检查都不交给模型决定。
 
 ## 三个最直观的例子
 
@@ -117,6 +137,22 @@ docker compose down
 `docker compose down` 会停止并删除容器，但默认保留 MySQL 数据卷。只有确认要清空模拟数据库时，才使用 `docker compose down -v`。
 
 ## 测试与评测
+
+### CI/CD
+
+每次 Push 或 Pull Request 会触发 GitHub Actions：
+
+- `quality-and-tests`：安装锁定依赖、运行 `ruff check`、Python compile smoke，以及单元/API/集成/契约测试；
+- `eval-smoke`：生成不调用真实模型的确定性评测清单并上传 artifact；
+- `docker-and-compose`：校验 Compose 配置并构建应用镜像。
+
+正式 CD 只由版本标签触发：
+
+```text
+v2.0.0  →  GitHub Actions  →  ghcr.io/ggbond121211/serviceflow:v2.0.0
+```
+
+可以手动运行同一个 release workflow 做 dry-run；它只构建镜像，不推送 GHCR。真实模型评测是单独的手动 workflow，需要明确配置 GitHub Environment Secrets，不会被普通 CI 或 CD 自动触发。
 
 软件测试不需要真实模型网络，使用 Fake Model 和 SQLite：
 

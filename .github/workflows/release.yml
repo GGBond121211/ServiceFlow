@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,21 +13,41 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      PUBLISH_IMAGE: ${{ github.event_name == 'push' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Select image tag
+        id: image
+        shell: bash
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="dry-run-${GITHUB_SHA:0:12}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/$repository:$tag" >> "$GITHUB_OUTPUT"
       - name: Log in to GHCR
+        if: env.PUBLISH_IMAGE == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish immutable image tag
+      - name: Build release image
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          push: ${{ env.PUBLISH_IMAGE == 'true' }}
+          tags: ${{ steps.image.outputs.image }}
       - name: Publish release metadata
         run: |
-          echo "### Container release" >> "$GITHUB_STEP_SUMMARY"
-          echo "ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$PUBLISH_IMAGE" == "true" ]]; then
+            echo "### Container release" >> "$GITHUB_STEP_SUMMARY"
+            echo "Published: ${{ steps.image.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Container release dry-run" >> "$GITHUB_STEP_SUMMARY"
+            echo "Built only: ${{ steps.image.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          fi

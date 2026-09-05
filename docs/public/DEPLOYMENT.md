@@ -65,7 +65,8 @@ SERVICEFLOW_PREVIOUS_IMAGE=ghcr.io/OWNER/REPO:v1.0.1 ./ops/scripts/rollback.sh
 
 普通 `ci.yml` 默认只跑 Fake/确定性测试、lint、compile smoke、Docker build 和 Compose config。
 `real-eval.yml` 只有手动触发时才读取 GitHub Secret `SERVICEFLOW_API_KEY`；不把 key 写进仓库，
-也不让普通 PR 消耗真实模型额度。`release.yml` 只对 `v*.*.*` tag 发布不可变 GHCR 镜像。
+也不让普通 PR 消耗真实模型额度。`release.yml` 对 `v*.*.*` tag 发布不可变 GHCR 镜像；
+手动运行 `release.yml` 时执行 dry-run，只构建镜像、不登录或推送 GHCR，用于在正式发布前验证 CD 链路。
 
 ## Kubernetes
 
