@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +12,8 @@ from serviceflow.domain.models import (
     RequestedAction,
     TicketKind,
 )
-from serviceflow.domain.policies import APPROVAL_AMOUNT_THRESHOLD
+from serviceflow.domain.policies import evaluate_policy
+from serviceflow.domain.results import Decision
 from serviceflow.infrastructure.case_repository import CaseRepository
 from serviceflow.infrastructure.repositories import OrderRepository
 
@@ -32,19 +33,36 @@ class CaseService:
             return _order_not_found()
         if order.status is not OrderStatus.PAID:
             return CaseResult(ok=False, code="action_not_supported", order=order)
-        updated = await self._orders.set_status(order_id, OrderStatus.CANCELLED)
+        updated = await self._orders.compare_and_set_status(
+            order_id, expected=OrderStatus.PAID, status=OrderStatus.CANCELLED
+        )
+        if updated is None:
+            return CaseResult(ok=False, code="order_state_changed", order=order)
         await self._session.commit()
         return CaseResult(ok=True, code="order_cancelled", order=updated)
 
-    async def request_refund(self, order_id: str) -> CaseResult:
+    async def request_refund(
+        self, order_id: str, *, reference_date: date = date(2026, 8, 1)
+    ) -> CaseResult:
         order = await self._orders.get(order_id)
         if order is None:
             return _order_not_found()
-        if order.status is not OrderStatus.DELIVERED:
-            return CaseResult(ok=False, code="action_not_supported", order=order)
-        if order.total_amount > APPROVAL_AMOUNT_THRESHOLD:
+        policy = evaluate_policy(
+            order=order,
+            requested_action=RequestedAction.REFUND,
+            issue_type=None,
+            reference_date=reference_date,
+        )
+        if policy.decision is Decision.APPROVAL_REQUIRED:
             return await self.create_approval(order_id, RequestedAction.REFUND)
+        if policy.decision is not Decision.DIRECT_REFUND:
+            return CaseResult(ok=False, code="action_not_supported", order=order)
 
+        updated = await self._orders.compare_and_set_status(
+            order.id, expected=OrderStatus.DELIVERED, status=OrderStatus.REFUNDED
+        )
+        if updated is None:
+            return CaseResult(ok=False, code="order_state_changed", order=order)
         refund = await self._cases.create_refund(
             case_id=_new_case_id("REFUND"),
             order_id=order.id,
@@ -52,7 +70,6 @@ class CaseService:
             status=RefundStatus.COMPLETED,
             created_at=datetime.now(UTC),
         )
-        updated = await self._orders.set_status(order.id, OrderStatus.REFUNDED)
         await self._session.commit()
         return CaseResult(ok=True, code="refund_completed", order=updated, case=refund)
 
@@ -78,7 +95,14 @@ class CaseService:
             summary=summary,
             created_at=datetime.now(UTC),
         )
-        updated = await self._orders.set_status(order.id, OrderStatus.TICKET_OPEN)
+        updated = order
+        if order.status not in {OrderStatus.REFUNDED, OrderStatus.CANCELLED}:
+            updated = await self._orders.compare_and_set_status(
+                order.id, expected=order.status, status=OrderStatus.TICKET_OPEN
+            )
+            if updated is None:
+                await self._session.rollback()
+                return CaseResult(ok=False, code="order_state_changed", order=order)
         if commit:
             await self._session.commit()
         return CaseResult(ok=True, code="ticket_created", order=updated, case=ticket)
@@ -115,6 +139,7 @@ class CaseService:
         approved: bool,
         *,
         commit: bool = True,
+        reference_date: date = date(2026, 8, 1),
     ) -> CaseResult:
         approval = await self._cases.get_approval(approval_id)
         if approval is None:
@@ -122,12 +147,33 @@ class CaseService:
         order = await self._orders.get(approval.order_id)
         if order is None:
             return _order_not_found()
-        status = ApprovalStatus.REJECTED
-        if approved:
-            status = ApprovalStatus.APPROVED
-        updated_approval = await self._cases.set_approval_status(approval.id, status)
+        if approval.status is not ApprovalStatus.PENDING:
+            return CaseResult(
+                ok=False, code="approval_already_decided", order=order, case=approval
+            )
 
         if approved and approval.requested_action is RequestedAction.REFUND:
+            policy = evaluate_policy(
+                order=order,
+                requested_action=RequestedAction.REFUND,
+                issue_type=None,
+                reference_date=reference_date,
+            )
+            if policy.decision is not Decision.APPROVAL_REQUIRED:
+                return CaseResult(ok=False, code="action_not_supported", order=order)
+
+        status = ApprovalStatus.APPROVED if approved else ApprovalStatus.REJECTED
+        updated_approval = await self._cases.decide_pending_approval(approval.id, status)
+        if updated_approval is None:
+            return CaseResult(ok=False, code="approval_already_decided", order=order)
+
+        if approved and approval.requested_action is RequestedAction.REFUND:
+            updated_order = await self._orders.compare_and_set_status(
+                order.id, expected=OrderStatus.DELIVERED, status=OrderStatus.REFUNDED
+            )
+            if updated_order is None:
+                await self._session.rollback()
+                return CaseResult(ok=False, code="order_state_changed", order=order)
             refund = await self._cases.create_refund(
                 case_id=_new_case_id("REFUND"),
                 order_id=order.id,
@@ -135,7 +181,6 @@ class CaseService:
                 status=RefundStatus.COMPLETED,
                 created_at=datetime.now(UTC),
             )
-            updated_order = await self._orders.set_status(order.id, OrderStatus.REFUNDED)
             if commit:
                 await self._session.commit()
             return CaseResult(

@@ -27,7 +27,9 @@ SERVICEFLOW_FALLBACK_REASON = "serviceflow.fallback_reason"
 
 
 class Telemetry:
-    def __init__(self, provider: TracerProvider, exporter: InMemorySpanExporter) -> None:
+    def __init__(
+        self, provider: TracerProvider, exporter: InMemorySpanExporter | None = None
+    ) -> None:
         self._provider = provider
         self._exporter = exporter
         self._tracer = provider.get_tracer("serviceflow", SEMCONV_VERSION)
@@ -46,7 +48,12 @@ class Telemetry:
 
     @classmethod
     def from_env(cls, *, sample_ratio: float) -> "Telemetry":
-        telemetry = cls.in_memory(sample_ratio=sample_ratio)
+        telemetry = cls(TracerProvider(
+            sampler=parent_consistent_sampler(sample_ratio),
+            resource=Resource.create(
+                {"service.name": os.getenv("OTEL_SERVICE_NAME", "serviceflow")}
+            ),
+        ))
         endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
         if endpoint:
             from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -79,7 +86,7 @@ class Telemetry:
         return current_traceparent()
 
     def finished_spans(self):
-        return tuple(self._exporter.get_finished_spans())
+        return tuple(self._exporter.get_finished_spans()) if self._exporter is not None else ()
 
 
 def current_traceparent() -> str:

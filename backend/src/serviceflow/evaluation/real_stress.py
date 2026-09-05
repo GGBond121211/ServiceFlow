@@ -232,6 +232,7 @@ async def _run_scenario(
                 client,
                 "/api/v1/conversations",
                 {"user_id": scenario.user_id},
+                user_id=scenario.user_id,
             )
             request_count += 1
             request_timings_ms.append(observation.timings_ms)
@@ -243,6 +244,7 @@ async def _run_scenario(
                     client,
                     f"/api/v1/conversations/{thread_id}/messages",
                     {"message": message},
+                    user_id=scenario.user_id,
                 )
                 request_count += 1
                 request_timings_ms.append(observation.timings_ms)
@@ -260,6 +262,7 @@ async def _run_scenario(
                         client,
                         f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
                         {"approved": scenario.case.approval_decision},
+                        user_id=scenario.user_id,
                     )
                     request_count += 1
                     request_timings_ms.append(observation.timings_ms)
@@ -292,10 +295,15 @@ async def _post_json(
     client: httpx.AsyncClient,
     path: str,
     payload: dict[str, object],
+    *,
+    user_id: str,
 ) -> HttpObservation:
     started_at = perf_counter()
     try:
-        response = await client.post(path, json=payload)
+        response = await client.post(path, json=payload, headers={
+            "X-ServiceFlow-User": user_id,
+            "X-ServiceFlow-Demo-Role": "approver",
+        })
     except httpx.TimeoutException as exc:
         raise _HttpRequestError("timeout", f"请求超时：{exc}") from exc
     except httpx.TransportError as exc:

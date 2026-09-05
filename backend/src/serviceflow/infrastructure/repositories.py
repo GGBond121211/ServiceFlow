@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -57,6 +57,16 @@ class OrderRepository:
         if updated is None:
             raise LookupError("order_not_found")
         return updated
+
+    async def compare_and_set_status(
+        self, order_id: str, *, expected: OrderStatus, status: OrderStatus
+    ) -> Order | None:
+        result = await self._session.execute(
+            update(OrderRow)
+            .where(OrderRow.id == order_id, OrderRow.status == expected.value)
+            .values(status=status.value)
+        )
+        return await self.get(order_id) if result.rowcount == 1 else None
 
 
 def _to_domain(row: OrderRow) -> Order:

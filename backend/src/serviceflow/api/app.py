@@ -49,7 +49,7 @@ def create_app(
         if owns_telemetry:
             application.state.telemetry.shutdown()
 
-    application = FastAPI(title="ServiceFlow", version="0.1.0", lifespan=lifespan)
+    application = FastAPI(title="ServiceFlow", version="2.0.1", lifespan=lifespan)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],

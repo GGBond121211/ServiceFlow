@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from serviceflow.agent.tool_registry import ToolRegistry
 from serviceflow.infrastructure.tool_executor import ToolExecutionContext, ToolExecutor, ToolResult
 
@@ -62,6 +64,9 @@ class MCPServer:
                     session_id=_optional_text(context.get("session_id")),
                     case_id=_optional_text(context.get("case_id")),
                     trace_id=_optional_text(context.get("trace_id")),
+                    reference_date=date.fromisoformat(
+                        str(context.get("reference_date", "2026-08-01"))
+                    ),
                 ),
             )
             return _result_mapping(result)

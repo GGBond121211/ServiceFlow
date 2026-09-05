@@ -1,6 +1,6 @@
 # ServiceFlow 能力边界与真实性声明
 
-最后更新：2026-09-04。本文与 [`ARCHITECTURE.md`](ARCHITECTURE.md)、[`EVALUATION.md`](EVALUATION.md) 同为对外说明。
+最后更新：2026-09-05。本文与 [`ARCHITECTURE.md`](ARCHITECTURE.md)、[`EVALUATION.md`](EVALUATION.md) 同为对外说明。
 
 本项目是**工程学习与本地演示项目**，不是生产系统。本文明确区分四种状态，公开说明必须落在其中之一，不得含糊。
 
@@ -33,7 +33,16 @@ V1 的评测结果见 [`EVALUATION.md`](EVALUATION.md) 的「V1 冻结基线」�
 
 Provider `UNKNOWN` 当前不会重新执行副作用：可由 Fake Provider query、去重 Webhook 或人工对账推进。Webhook Inbox、事务 Outbox、SQL TaskEnvelope 和 Celery/Redis Outbox Worker 已实现；Provider reconcile 的周期调度、真实 Provider、真实外部通知和 SSE 尚未实现。
 
-LLM Gateway 已实现本地双副本、服务 Bearer 鉴权、真实 tenant 限流、独立模型审计和每副本内存 Metrics。两个模型仍共享 Frontier Base URL 与凭据，不能称独立 Provider 容灾；本地服务密钥也不等于企业 IAM。Streaming 当前明确返回 422，Prometheus/Grafana、Jaeger/Collector 和尾部采样尚未实现。
+LLM Gateway 已实现本地双副本、服务 Bearer 鉴权、真实 tenant 限流、独立模型审计和每副本内存 Metrics。两个模型仍共享 Frontier Base URL 与凭据，不能称独立 Provider 容灾；本地服务密钥也不等于企业 IAM。Streaming 当前明确返回 422；Prometheus/Grafana、Jaeger/Collector 已有 Compose 配置，尾部采样尚未实现。
+
+### 2.0.1 主路径补充（2026-09-05）
+
+- Web Native 通过 CaseService 更新模拟业务表；Provider/Operation/Outbox/Worker 是独立组件契约，尚未串入 Web 退款，不宣称完整外部副作用闭环。
+- `X-ServiceFlow-User`、`X-ServiceFlow-Demo-Role` 是可由调用者自行选择的演示身份，不是登录认证；只允许本机可信演示。
+- Native 现已提供最近 8 条历史和政策证据正文，但完整 Memory/Prompt Release 集成待后续版本；自然语言质量仍需真实模型评测。
+- 内部 MCP-style stdio 是自定义传输，不是标准 MCP 兼容性验证。
+- 数据库确认 claim 防止同一动作重复领取；业务 CAS 阻止重复退款及终态回退。这不等于 exactly-once：领取后、执行或保存 checkpoint 前崩溃需人工核对。同一会话的多写者并发推进未实现。
+- Kubernetes 当前只有本地 manifest 与使用说明，不声称完成集群实证。昂贵参数矩阵、真实模型整体质量与生产扩展继续留到 2.1/2.2。
 
 2.0 引入的运维组件仅用于本地可复现演示，**不得表述为生产能力**：
 

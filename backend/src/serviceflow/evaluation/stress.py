@@ -282,6 +282,7 @@ async def _run_user_case(
             response = await client.post(
                 "/api/v1/conversations",
                 json={"user_id": identity.user_id},
+                headers={"X-ServiceFlow-User": identity.user_id},
             )
             request_count += 1
             if response.status_code != 201:
@@ -293,6 +294,7 @@ async def _run_user_case(
                 response = await client.post(
                     f"/api/v1/conversations/{thread_id}/messages",
                     json={"message": message},
+                    headers={"X-ServiceFlow-User": identity.user_id},
                 )
                 request_count += 1
                 if response.status_code != 200:
@@ -305,6 +307,10 @@ async def _run_user_case(
                     approval_id = approval.get("id")
                     response = await client.post(
                         f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
+                        headers={
+                            "X-ServiceFlow-User": identity.user_id,
+                            "X-ServiceFlow-Demo-Role": "approver",
+                        },
                         json={
                             "approved": identity.case.approval_decision,
                         },

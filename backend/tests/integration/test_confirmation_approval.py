@@ -1,5 +1,6 @@
+import asyncio
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from serviceflow.infrastructure.approval_service import ApprovalService
 from serviceflow.infrastructure.authorization import Principal
 from serviceflow.infrastructure.database import Base
 from serviceflow.infrastructure.repositories import OrderRepository
-from serviceflow.infrastructure.tables import RefundRow, TicketRow, UserRow
+from serviceflow.infrastructure.tables import ApprovalRow, RefundRow, TicketRow, UserRow
 from serviceflow.infrastructure.tool_executor import ToolExecutionContext, ToolExecutor
 
 
@@ -36,7 +37,7 @@ async def database(tmp_path: Path) -> AsyncIterator[async_sessionmaker[AsyncSess
                     status=OrderStatus.DELIVERED,
                     total_amount=Decimal(amount),
                     placed_at=datetime(2026, 7, 1, tzinfo=UTC),
-                    delivered_at=datetime(2026, 7, 5, tzinfo=UTC),
+                    delivered_at=datetime(2026, 7, 28, tzinfo=UTC),
                 )
             )
         await session.commit()
@@ -56,6 +57,8 @@ async def database(tmp_path: Path) -> AsyncIterator[async_sessionmaker[AsyncSess
 )
 async def test_write_tools_require_confirmation_before_writes(database, tool) -> None:
     arguments = {"order_id": "ORDER-LOW"}
+    if tool == "create_exchange_request":
+        arguments["issue_type"] = "quality"
     if tool == "create_support_ticket":
         arguments["summary"] = "商品损坏"
     async with database() as session:
@@ -162,3 +165,72 @@ async def test_high_compensation_approval_cannot_turn_into_refund(database) -> N
     assert result.code == "approval_approved"
     assert refunds == 0
     assert tickets == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("order_id", ["ORDER-LOW", "ORDER-HIGH"])
+async def test_expired_refund_cannot_write_or_create_approval(database, order_id) -> None:
+    async with database() as session:
+        result = await ToolExecutor(session, tenant_id="tenant-a").execute(
+            call_id="expired",
+            name="request_refund",
+            arguments={"order_id": order_id},
+            context=ToolExecutionContext(
+                "USER-001", "tenant-a", confirmed=True, reference_date=date(2026, 8, 10)
+            ),
+        )
+        assert result.code == "action_not_supported"
+        assert await session.scalar(select(func.count()).select_from(RefundRow)) == 0
+        assert await session.scalar(select(func.count()).select_from(ApprovalRow)) == 0
+        assert (await CaseService(session).get_order(order_id)).status is OrderStatus.DELIVERED
+
+
+@pytest.mark.asyncio
+async def test_expired_approval_does_not_mark_approved(database) -> None:
+    async with database() as session:
+        service = CaseService(session)
+        pending = await service.request_refund("ORDER-HIGH")
+        result = await service.decide_approval(
+            pending.case.id, True, reference_date=date(2026, 8, 10)
+        )
+        assert not result.ok
+        assert (await service.get_case_status(pending.case.id)).case.status.value == "pending"
+        assert await session.scalar(select(func.count()).select_from(RefundRow)) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("high_value", [False, True])
+async def test_concurrent_refunds_have_one_database_effect(database, high_value) -> None:
+    approval_ids = []
+    if high_value:
+        async with database() as session:
+            for _ in range(2):
+                pending = await CaseService(session).request_refund("ORDER-HIGH")
+                approval_ids.append(pending.case.id)
+
+    async def execute(index):
+        async with database() as session:
+            service = CaseService(session)
+            if high_value:
+                return await service.decide_approval(approval_ids[index], True)
+            return await service.request_refund("ORDER-LOW")
+
+    results = await asyncio.gather(execute(0), execute(1))
+    assert sum(result.ok for result in results) == 1
+    async with database() as session:
+        assert await session.scalar(select(func.count()).select_from(RefundRow)) == 1
+        if high_value:
+            assert await session.scalar(
+                select(func.count()).select_from(ApprovalRow)
+                .where(ApprovalRow.status == "approved")
+            ) == 1
+
+
+@pytest.mark.asyncio
+async def test_support_ticket_does_not_erase_refund_terminal_state(database) -> None:
+    async with database() as session:
+        service = CaseService(session)
+        await service.request_refund("ORDER-LOW")
+        result = await service.create_ticket("ORDER-LOW", "support", "咨询已完成的退款")
+        assert result.ok
+        assert result.order.status is OrderStatus.REFUNDED

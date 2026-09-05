@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +11,8 @@ from serviceflow.application.operation_service import OperationService
 from serviceflow.application.orchestration_service import OrchestrationService
 from serviceflow.application.order_service import OrderService
 from serviceflow.domain.models import IssueType, RequestedAction, TicketKind
-from serviceflow.domain.policies import evaluate_policy
+from serviceflow.domain.policies import evaluate_policy, requires_approval
+from serviceflow.domain.results import Decision
 from serviceflow.infrastructure.answerability import AnswerabilityGate
 from serviceflow.infrastructure.authorization import Authorization, Principal
 from serviceflow.infrastructure.handoff import HandoffService
@@ -30,6 +30,7 @@ class ToolExecutionContext:
     session_id: str | None = None
     case_id: str | None = None
     trace_id: str | None = None
+    reference_date: date = date(2026, 8, 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +110,16 @@ class ToolExecutor:
             if order_id is None:
                 return self._result(call_id, name, False, "validation_error", {})
             order = await self._service.get_order(order_id)
-            if order is not None and order.total_amount > Decimal("500.00"):
+            needs_approval = order is not None and requires_approval(order.total_amount)
+            if name == "request_refund":
+                policy = evaluate_policy(
+                    order=order,
+                    requested_action=RequestedAction.REFUND,
+                    issue_type=None,
+                    reference_date=context.reference_date,
+                )
+                needs_approval = policy.decision is Decision.APPROVAL_REQUIRED
+            if needs_approval:
                 return self._result(call_id, name, False, "approval_required", {})
         return await self._dispatch(call_id, name, arguments, context)
 
@@ -140,12 +150,15 @@ class ToolExecutor:
                 {"order_id": order.id, "amount": str(order.total_amount)},
             )
         if name == "check_after_sales_eligibility" and order_id is not None:
-            action = RequestedAction(str(arguments["requested_action"]))
+            try:
+                action = RequestedAction(str(arguments["requested_action"]))
+            except ValueError:
+                return self._result(call_id, name, False, "validation_error", {})
             result = evaluate_policy(
                 order=await self._service.get_order(order_id),
                 requested_action=action,
                 issue_type=IssueType.QUALITY,
-                reference_date=date(2026, 8, 1),
+                reference_date=context.reference_date,
             )
             return self._result(
                 call_id,
@@ -154,7 +167,26 @@ class ToolExecutor:
                 "ok",
                 {"decision": result.decision.value, "policy_id": result.policy_id},
             )
+        if name == "cancel_order" and order_id is not None:
+            case = await self._service.cancel_order(order_id)
+            data = {"order_id": order_id}
+            if case.order is not None:
+                data["order_status"] = case.order.status.value
+            return self._result(call_id, name, case.ok, case.code, data)
         if name in {"create_return_request", "create_exchange_request"} and order_id is not None:
+            if name == "create_exchange_request":
+                try:
+                    issue = IssueType(str(arguments["issue_type"]))
+                except ValueError:
+                    return self._result(call_id, name, False, "validation_error", {})
+                policy = evaluate_policy(
+                    order=await self._service.get_order(order_id),
+                    requested_action=RequestedAction.EXCHANGE,
+                    issue_type=issue,
+                    reference_date=context.reference_date,
+                )
+                if policy.decision is not Decision.CREATE_EXCHANGE_TICKET:
+                    return self._result(call_id, name, False, "action_not_supported", {})
             kind = (
                 TicketKind.EXCHANGE.value
                 if name == "create_exchange_request"
@@ -165,13 +197,19 @@ class ToolExecutor:
                 kind=kind,
                 summary=str(arguments.get("summary", name)),
             )
-            data = {"case_id": case.case.id} if case.case else {}
+            data = {"order_id": order_id}
+            if case.case:
+                data["case_id"] = case.case.id
             if case.order is not None:
                 data["order_status"] = case.order.status.value
             return self._result(call_id, name, case.ok, case.code, data)
         if name == "request_refund" and order_id is not None:
-            case = await self._service.request_refund(order_id)
-            data = {"case_id": case.case.id} if case.case else {}
+            case = await self._service.request_refund(
+                order_id, reference_date=context.reference_date
+            )
+            data = {"order_id": order_id}
+            if case.case:
+                data["case_id"] = case.case.id
             if case.order is not None:
                 data["order_status"] = case.order.status.value
             return self._result(call_id, name, case.ok, case.code, data)
@@ -181,7 +219,9 @@ class ToolExecutor:
                 kind=TicketKind.SUPPORT.value,
                 summary=str(arguments["summary"]),
             )
-            data = {"case_id": case.case.id} if case.case else {}
+            data = {"order_id": order_id}
+            if case.case:
+                data["case_id"] = case.case.id
             if case.order is not None:
                 data["order_status"] = case.order.status.value
             return self._result(call_id, name, case.ok, case.code, data)
@@ -200,12 +240,18 @@ class ToolExecutor:
                 result = await self._service.get_case_status(case_id)
                 if result is None or result.case is None:
                     return self._result(call_id, name, False, "not_found", {})
+                if result.order is None or result.order.user_id != context.user_id:
+                    return self._result(call_id, name, False, "unauthorized", {})
                 return self._result(
                     call_id,
                     name,
                     True,
                     "ok",
-                    {"case_id": case_id, "status": result.case.status.value},
+                    {
+                        "order_id": result.order.id,
+                        "case_id": case_id,
+                        "case_status": result.case.status.value,
+                    },
                 )
         if name == "search_policy_evidence" and self._policy_retriever is not None:
             query = _text(arguments.get("query"))
@@ -214,7 +260,7 @@ class ToolExecutor:
                     query,
                     tenant_id=context.tenant_id,
                     region="CN",
-                    at=date(2026, 8, 1),
+                    at=context.reference_date,
                     limit=5,
                 )
                 decision = AnswerabilityGate.policy(
@@ -244,6 +290,7 @@ class ToolExecutor:
                     "ok",
                     {
                         "policy_ids": [item.document.policy_id for item in evidence],
+                        "evidence": [item.as_context() for item in evidence],
                         "backend": backend,
                         "fallback": fallback,
                     },
@@ -300,7 +347,9 @@ class ToolExecutor:
             )
         if name == "create_compensation_request" and order_id is not None:
             case = await self._service.request_compensation(order_id)
-            data = {"case_id": case.case.id} if case.case else {}
+            data = {"order_id": order_id}
+            if case.case:
+                data["case_id"] = case.case.id
             return self._result(call_id, name, case.ok, case.code, data)
         if name == "request_handoff":
             handoff = await HandoffService(self._session).create(

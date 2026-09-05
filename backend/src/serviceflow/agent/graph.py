@@ -15,6 +15,7 @@ from serviceflow.agent.model import StructuredModel
 from serviceflow.agent.state import AgentState, ToolEvent
 from serviceflow.agent.tool_loop import ToolLoop
 from serviceflow.agent.tools import ServiceTools
+from serviceflow.application.case_service import CaseService
 from serviceflow.application.results import CaseResult
 from serviceflow.domain.models import (
     Approval,
@@ -90,19 +91,43 @@ class ServiceGraphNodes:
                     session_id=state.get("session_id", state.get("thread_id")),
                     case_id=state.get("after_sales_case_id"),
                     run_id=state.get("run_id"),
+                    reference_date=state.get("reference_date", DEMO_REFERENCE_DATE),
+                    history=state.get("conversation_history", []),
                 )
             finally:
                 if stdio_client is not None:
                     await stdio_client.close()
+        final = dict(result.business_state)
+        async with self._session_factory() as session:
+            service = CaseService(session)
+            order_id = final.get("order_id")
+            if isinstance(order_id, str):
+                order = await service.get_order(order_id)
+                if order is not None and order.user_id == state["user_id"]:
+                    final["order_status"] = order.status.value
+            case_id = final.get("case_id")
+            if isinstance(case_id, str):
+                case = await service.get_case_status(case_id)
+                if (
+                    case is not None and case.case is not None
+                    and case.order is not None and case.order.user_id == state["user_id"]
+                ):
+                    final["case_status"] = case.case.status.value
         return {
             "assistant_message": result.message,
             "model_name": result.model,
             "token_usage": {"input": result.input_tokens, "output": result.output_tokens},
             "tool_events": result.tool_events,
             "agent_status": result.status,
-            "final_business_state": result.business_state,
+            "final_business_state": final,
             "pending_tool_call": result.pending_tool_call,
             "pending_code": result.pending_code,
+            "approval_id": None,
+            "conversation_history": [
+                *state.get("conversation_history", [])[-6:],
+                {"role": "user", "content": state["user_message"][:4000]},
+                {"role": "assistant", "content": result.message[:4000]},
+            ],
         }
 
     async def extract_intent(self, state: AgentState) -> AgentState:

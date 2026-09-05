@@ -5,6 +5,7 @@ from serviceflow.agent.model import ModelResult, NativeModelResult, NativeToolCa
 from serviceflow.infrastructure.gateway_context import current_gateway_context
 from serviceflow.infrastructure.gateway_errors import GatewayErrorClass, GatewayFailure
 from serviceflow.infrastructure.gateway_server import create_gateway_app
+from serviceflow.infrastructure.otel import Telemetry
 
 
 class StubGateway:
@@ -39,7 +40,10 @@ async def test_openai_compatible_gateway_service_preserves_json_and_tools() -> N
         "x-serviceflow-session-id": "SESSION-1",
         "x-serviceflow-run-id": "RUN-1",
     }
-    app = create_gateway_app(gateway, internal_key="test-gateway-key")
+    telemetry = Telemetry.in_memory(sample_ratio=1)
+    app = create_gateway_app(
+        gateway, internal_key="test-gateway-key", telemetry=telemetry
+    )
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -87,6 +91,7 @@ async def test_openai_compatible_gateway_service_preserves_json_and_tools() -> N
     assert {context.tenant_id for context in gateway.contexts} == {"tenant-a"}
     assert {context.session_id for context in gateway.contexts} == {"SESSION-1"}
     assert {context.run_id for context in gateway.contexts} == {"RUN-1"}
+    telemetry.shutdown()
 
 
 class FailingGateway:

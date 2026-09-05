@@ -13,6 +13,7 @@ function $(id) {
 async function request(path, options = {}) {
   const headers = {
     "Content-Type": "application/json",
+    "X-ServiceFlow-User": $("user-select").value,
   };
   if (options.headers) {
     Object.assign(headers, options.headers);
@@ -97,10 +98,26 @@ async function decideApproval(approved) {
       `/conversations/${state.threadId}/approvals/${state.approvalId}`,
       {
         method: "POST",
+        headers: { "X-ServiceFlow-Demo-Role": "approver" },
         body: JSON.stringify({ approved }),
       },
     );
     renderResponse(response);
+  } catch (error) {
+    setError(error.message);
+  } finally {
+    setBusy(false);
+  }
+}
+
+async function confirmAction(confirmed) {
+  if (!state.threadId) return;
+  setBusy(true);
+  try {
+    renderResponse(await request(`/conversations/${state.threadId}/confirmations`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed }),
+    }));
   } catch (error) {
     setError(error.message);
   } finally {
@@ -123,6 +140,7 @@ function renderResponse(response) {
   if (!caseStatus) {
     caseStatus = finalState.ticket_status;
   }
+  if (!caseStatus) caseStatus = finalState.case_status;
 
   $("decision-value").textContent = formatValue(response.decision);
   $("policy-value").textContent = formatValue(response.policy_id);
@@ -140,6 +158,7 @@ function renderResponse(response) {
     pending = true;
   }
   $("approval-actions").hidden = !pending;
+  $("confirmation-actions").hidden = response.agent_status !== "WAITING_CONFIRMATION";
   $("approve-button").disabled = !pending;
   $("reject-button").disabled = !pending;
   let toolEvents = response.tool_events;
@@ -206,6 +225,10 @@ function setBusy(busy) {
   $("approve-button").disabled = busy;
   $("reject-button").disabled = busy;
   $("message-input").disabled = busy;
+  $("confirm-button").disabled = busy;
+  $("decline-button").disabled = busy;
+  $("user-select").disabled = busy;
+  $("new-conversation").disabled = busy;
 }
 
 function setError(message) {
@@ -245,11 +268,13 @@ function handleRequestError(error) {
 }
 
 function handleNewConversation() {
-  startConversation().catch(handleRequestError);
+  setBusy(true);
+  state.threadId = null;
+  startConversation().catch(handleRequestError).finally(() => setBusy(false));
 }
 
 function handleUserChange() {
-  startConversation().catch(handleRequestError);
+  handleNewConversation();
 }
 
 function approveRefund() {
@@ -260,8 +285,22 @@ function rejectRefund() {
   decideApproval(false);
 }
 
-function fillExample(event) {
+async function fillExample(event) {
   const button = event.currentTarget;
+  if ($("user-select").disabled) return;
+  if (button.dataset.user !== $("user-select").value) {
+    $("user-select").value = button.dataset.user;
+    state.threadId = null;
+    setBusy(true);
+    try {
+      await startConversation();
+    } catch (error) {
+      setError(error.message);
+      return;
+    } finally {
+      setBusy(false);
+    }
+  }
   let orderId = button.dataset.order;
   if (!orderId) {
     orderId = "";
@@ -281,6 +320,8 @@ function initializePage() {
   $("user-select").addEventListener("change", handleUserChange);
   $("approve-button").addEventListener("click", approveRefund);
   $("reject-button").addEventListener("click", rejectRefund);
+  $("confirm-button").addEventListener("click", () => confirmAction(true));
+  $("decline-button").addEventListener("click", () => confirmAction(false));
 
   const exampleButtons = document.querySelectorAll(".example-button");
   for (const button of exampleButtons) {

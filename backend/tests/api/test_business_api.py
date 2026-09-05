@@ -23,6 +23,7 @@ async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
     async with httpx.AsyncClient(
         transport=transport,
         base_url="http://testserver",
+        headers={"X-ServiceFlow-User": "USER-001", "X-ServiceFlow-Demo-Role": "operator"},
     ) as test_client:
         yield test_client
     await engine.dispose()

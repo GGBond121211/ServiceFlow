@@ -55,8 +55,20 @@ class ToolRegistry:
                     {"order_id": text_id, "requested_action": text_id},
                 ),
                 _read("estimate_refund", "读取订单实付金额作为退款估算。", {"order_id": text_id}),
-                _write("create_return_request", "创建退货申请。", {"order_id": text_id}),
-                _write("create_exchange_request", "创建换货申请。", {"order_id": text_id}),
+                _write("cancel_order", "取消已付款但尚未发货的订单。", {"order_id": text_id}),
+                _write(
+                    "create_return_request",
+                    "创建退货咨询工单，等待人工处理。",
+                    {"order_id": text_id},
+                ),
+                _write(
+                    "create_exchange_request",
+                    "申请换货；需用户明确质量问题，按确定性政策检查资格。",
+                    {
+                        "order_id": text_id,
+                        "issue_type": {"type": "string", "enum": ["quality", "none"]},
+                    },
+                ),
                 _write(
                     "request_refund",
                     "提出退款操作。高风险场景会要求确认或审批。",
@@ -114,7 +126,7 @@ def _write(name: str, description: str, properties: dict[str, object]) -> ToolDe
         risk_level=(
             "high" if name in {"request_refund", "create_compensation_request"} else "medium"
         ),
-        idempotent=True,
+        idempotent=False,
         requires_confirmation=True,
         requires_approval=name in {"request_refund", "create_compensation_request"},
         allowed_scene=("after_sales",),

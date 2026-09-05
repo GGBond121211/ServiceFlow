@@ -29,7 +29,7 @@ SERVICEFLOW_MODEL=deepseek-v4-flash
 docker compose build
 docker compose up -d
 Invoke-RestMethod http://127.0.0.1:8009/api/v1/health
-Invoke-RestMethod -Method Post http://127.0.0.1:8009/api/v1/demo/reset
+Invoke-RestMethod -Method Post http://127.0.0.1:8009/api/v1/demo/reset -Headers @{"X-ServiceFlow-Demo-Role"="operator"}
 ```
 
 查看日志：
@@ -71,6 +71,8 @@ V1 冻结文件不运行 `ruff format`；当前代码门禁是 `ruff check`。
 
 ## 运行异步全链路压力测试
 
+以下压力测试与固定案例评测入口是 **V1 固定图 Harness**，不支持当前 Native Tool Loop 的确认协议，不能用来证明 2.0.1 Native 主路径质量。普通开发使用上面的 Fake 软件测试；Native 逐案质量 Runner 留待 2.1。
+
 压力测试使用项目现有的基础 40 案和复杂中文 60 案。每个案例代表一个独立用户，
 所有用户共享同一个 FastAPI 应用、LangGraph、异步 SQLAlchemy 会话工厂和数据库；模型
 使用确定性的异步回放实现，因此不会产生外部模型费用：
@@ -91,9 +93,7 @@ uv run serviceflow async-stress --level 10 100
 
 ### 真实 Docker、MySQL 和 DeepSeek 压力测试
 
-上面的压力测试不调用外部模型，适合日常回归。如果需要验证真实部署链路，可以运行
-下面的入口。运行前先确认 `docker compose up -d` 已启动，并且根目录 `.env` 中的模型
-配置可用：
+上面的压力测试不调用外部模型，可作为 V1 历史对照。下面入口仅适用于 V1 固定图服务，不能直接对当前默认 Native 服务运行并解释成质量结果。运行前需确认服务模式与数据清理权限，并且根目录 `.env` 中的模型配置可用：
 
 ```powershell
 Set-Location backend
@@ -153,7 +153,7 @@ uv run serviceflow eval `
 docker compose ps
 docker compose config
 Invoke-RestMethod http://127.0.0.1:8009/api/v1/health
-Invoke-RestMethod http://127.0.0.1:8009/api/v1/orders/ORDER-001
+Invoke-RestMethod http://127.0.0.1:8009/api/v1/orders/ORDER-001 -Headers @{"X-ServiceFlow-User"="USER-001"}
 ```
 
 ## 端口说明

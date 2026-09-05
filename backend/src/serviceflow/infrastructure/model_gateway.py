@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from decimal import Decimal
@@ -116,7 +117,7 @@ class ModelGateway:
         self._audit_sink = audit_sink
         self._circuit = circuit_breaker or CircuitBreaker()
         self.metrics = metrics or GatewayMetrics()
-        self.calls: list[GatewayCallRecord] = []
+        self.calls: deque[GatewayCallRecord] = deque(maxlen=100)
 
     @property
     def last_call(self) -> GatewayCallRecord | None:
@@ -342,7 +343,12 @@ class ModelGateway:
             )
         if monotonic() - started >= route.deadline_seconds:
             raise _deadline(manual_required=route.risk_level == "high")
-        assert last_failure is not None
+        if last_failure is None:
+            raise GatewayFailure(
+                GatewayErrorClass.CIRCUIT_OPEN,
+                "所有候选模型的熔断器均已打开",
+                manual_required=route.risk_level == "high",
+            )
         if route.risk_level == "high":
             raise GatewayFailure(
                 last_failure.error_class,

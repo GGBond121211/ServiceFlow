@@ -20,7 +20,7 @@
         <div class="topbar-meta">
           <span class="status-dot"></span>
           <span id="connection-status">正在连接</span>
-          <span class="version">V1 · 演示</span>
+          <span class="version">2.0.1 · 本地模拟</span>
         </div>
       </header>
 
@@ -54,15 +54,15 @@
             <div class="sidebar-divider"></div>
             <p class="field-label">一键填充演示案例</p>
             <div class="example-list">
-              <button class="example-button" data-order="ORDER-001" data-message="ORDER-001 还没发货，帮我取消">
+              <button class="example-button" data-user="USER-001" data-order="ORDER-001" data-message="ORDER-001 还没发货，帮我取消">
                 <span class="example-icon cancel-icon">↗</span>
-                <span><strong>未发货取消</strong><small>直接处理 · POL-CANCEL-01</small></span>
+                <span><strong>未发货取消</strong><small>用户确认后处理 · USER-001</small></span>
               </button>
-              <button class="example-button" data-order="ORDER-007" data-message="ORDER-007 我不想要了，申请退款">
+              <button class="example-button" data-user="USER-002" data-order="ORDER-007" data-message="ORDER-007 我不想要了，申请退款">
                 <span class="example-icon refund-icon">↻</span>
-                <span><strong>小额退款</strong><small>直接处理 · POL-REFUND-01</small></span>
+                <span><strong>小额退款</strong><small>用户确认后处理 · USER-002</small></span>
               </button>
-              <button class="example-button" data-order="ORDER-003" data-message="ORDER-003 的耳机有问题，我想退款">
+              <button class="example-button" data-user="USER-001" data-order="ORDER-003" data-message="ORDER-003 的耳机有问题，我想退款">
                 <span class="example-icon approval-icon">!</span>
                 <span><strong>高金额退款</strong><small>需要审批 · POL-APPROVAL-01</small></span>
               </button>
@@ -74,7 +74,7 @@
               target="_blank"
               rel="noreferrer"
             >
-              <span>↗</span> 查看 100 案评测报告
+              <span>↗</span> 查看 V1 历史评测报告
             </a>
           </aside>
 
@@ -119,9 +119,13 @@
                 <div class="card-icon approval-card-icon">!</div><div><small>人工审批</small><strong id="approval-status-value">—</strong></div>
               </article>
             </div>
+            <div id="confirmation-actions" class="approval-actions" hidden>
+              <p>请确认上述操作。确认后才会提交业务处理。</p>
+              <div><button id="confirm-button" class="approve-button" type="button">确认操作</button><button id="decline-button" class="reject-button" type="button">取消操作</button></div>
+            </div>
             <div id="approval-actions" class="approval-actions" hidden>
-              <p>这笔退款需要演示审批决定</p>
-              <div><button id="approve-button" class="approve-button" type="button">同意退款</button><button id="reject-button" class="reject-button" type="button">拒绝</button></div>
+              <p>切换为模拟审批员决定（不是生产身份认证）</p>
+              <div><button id="approve-button" class="approve-button" type="button">同意申请</button><button id="reject-button" class="reject-button" type="button">拒绝</button></div>
             </div>
 
             <div class="timeline-heading">

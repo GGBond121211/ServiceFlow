@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/GGBond121211/ServiceFlow/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/GGBond121211/ServiceFlow/actions/workflows/ci.yml)
 
-> 当前主线是 **ServiceFlow 2.0 baseline**：一个面向模拟电商售后的、可运行的单 Agent 业务流程展示项目。
+> 当前主线是 **ServiceFlow 2.0.1**：一个面向模拟电商售后的单 Agent 业务流程展示项目。修正范围与验证边界见 [2.0.1 发布说明](docs/public/RELEASE-2.0.1.md)。
 > 2.0 优先完成可运行闭环、工程验证和部署演示；质量参数的重型 A/B 实验延期到 2.1+，不把参考默认值描述成最优结论。
 
 ServiceFlow 是一个面向模拟电商售后的单 Agent 工作流。用户用自然语言描述订单问题，系统提取意图、查询订单、匹配确定性业务规则，并通过受限业务工具更新 MySQL 中的模拟状态。
@@ -12,18 +12,19 @@ ServiceFlow 是一个面向模拟电商售后的单 Agent 工作流。用户用�
 2.0 在保留“模型理解语言、Python 政策做业务约束、数据库终态做事实来源”这一核心边界的基础上，补齐了一条可观测、可恢复、可部署的 Agent 工程闭环：
 
 - **Tool Loop + MCP**：模型可以在受限工具注册表中选择工具；Tool Executor 仍负责风险、确认和审批门禁，模型不能直接写数据库或拼接 SQL；
-- **业务状态与恢复**：Session、Case、Operation、Run、SQL checkpoint、租户/资源授权、确认/审批、幂等、UNKNOWN 对账、Webhook/Outbox 和 Redis/Celery Worker；
+- **Web 主路径**：SQL Session/checkpoint、模拟身份下的资源归属校验、用户确认、人工审批和模拟订单/退款/工单写入；
+- **独立组件契约**：Operation、Fake Provider 幂等/UNKNOWN 对账、Webhook/Outbox 和 Redis/Celery Worker；这些组件尚未串入 Web Native 退款主路径，不代表端到端外部副作用能力；
 - **Policy RAG**：BM25、语义检索、Qdrant/HNSW、RRF 和候选重排组成政策检索链，政策层级与来源边界单独记录；
 - **LLM Gateway**：统一模型路由、能力过滤、有界重试/fallback、deadline、熔断、限流和低基数运行指标；
 - **可观测与部署**：OpenTelemetry → Collector → Jaeger、Prometheus、Grafana、双 Gateway 故障切换、Docker Compose 和本地 Kubernetes manifest；
 - **CI/CD**：Push/PR 自动运行代码检查、测试、确定性评测清单和容器构建；推送 `v*.*.*` 标签时构建并发布不可变 GHCR 镜像，CD 也提供不推送镜像的手动 dry-run。
 
-2.0 是面向学习、作品集和面试演示的本地模拟系统，不连接真实商城、支付、物流或客服系统。Compose 观测栈和 Kubernetes manifest 是可复现演示能力
+2.0 是面向学习、作品集和面试演示的本地模拟系统，不连接真实商城、支付、物流或客服系统。Compose 观测栈用于本地演示，Kubernetes manifest 不等于已验证的集群部署。
 
 一条完整的 Agent 业务闭环：
 
 ```text
-自然语言请求 → 结构化意图 → Python 业务规则 → 受限工具 → 数据库事实 → 可核验回复
+自然语言请求 → 模型选择工具 → Python 政策与授权门禁 → 确认/审批 → 应用服务 → 数据库事实
 ```
 
 ## 项目能做什么
@@ -44,7 +45,7 @@ flowchart LR
     USER["用户"] --> UI["浏览器前端\nHTML / CSS / JavaScript"]
     UI -->|"HTTP JSON"| API["FastAPI\n8009"]
     API --> GRAPH["LangGraph\n单 Agent"]
-    GRAPH --> LLM["兼容 Chat API 的模型\n只负责理解语言"]
+    GRAPH --> LLM["兼容 Chat API 的模型\n理解语言并选择受限工具"]
     GRAPH --> POLICY["Python 确定性业务规则"]
     GRAPH --> TOOLS["受限业务工具"]
     TOOLS --> DB["SQLAlchemy\nMySQL 8.4"]
@@ -52,17 +53,19 @@ flowchart LR
     RESULT --> UI
 ```
 
-模型不能直接修改订单，也不能直接拼接 SQL。模型只输出结构化意图；是否合法、调用什么工具以及数据库最终状态，都由 Python 业务规则、应用服务和数据库共同约束。
+模型不能直接修改订单，也不能直接拼接 SQL。Native 路径由模型选择工具及参数，确定性代码决定是否允许执行；结构化终态回读数据库，模型自然语言回复仍不能替代事实字段。
 
-2.0 增加了 Native Tool Loop + MCP 路径，使 ToolResult 可以影响模型的下一步选择；旧的固定图路径保留为兼容路径。无论走哪条路径，政策、授权、确认/审批、幂等和最终数据库状态检查都不交给模型决定。
+2.0 增加了 Native Tool Loop + MCP-style 内部传输路径，使 ToolResult 可以影响模型的下一步选择；旧固定图保留用于 V1 对照。自定义 stdio 协议不代表标准 MCP 客户端互操作。Native 已接入有界历史和政策证据正文，完整 Memory/Prompt Release 尚未串入该路径。
 
 ## 三个最直观的例子
 
-| 用户输入 | 预期路径 | 最终结果 |
+| 用户输入（选择对应模拟用户） | 预期路径 | 最终结果 |
 | --- | --- | --- |
-| `ORDER-001 还没发货，帮我取消` | 查询订单 → 取消工具 | 订单变为 `cancelled` |
-| `ORDER-007 的耳机有问题，我想退款` | 查询订单 → 小额退款工具 | 订单变为 `refunded`，退款完成 |
-| `ORDER-003 的耳机有质量问题，我想退款` | 查询订单 → 创建审批 → 人工同意 → 退款 | 审批通过，退款完成，订单变为 `refunded` |
+| USER-001：`ORDER-001 还没发货，帮我取消` | 查询订单 → 用户确认 → 取消工具 | 订单变为 `cancelled` |
+| USER-002：`ORDER-007 的游戏鼠标有问题，我想退款` | 查询订单 → 用户确认 → 小额退款工具 | 订单变为 `refunded`，模拟退款完成 |
+| USER-001：`ORDER-003 的耳机有质量问题，我想退款` | 查询订单 → 用户确认 → 创建审批 → 模拟审批人同意 | 审批通过，模拟退款完成 |
+
+演示政策使用固定参考日期 **2026-08-01**，不随电脑日期变化。API 使用可自行选择的 `X-ServiceFlow-User` 和 `X-ServiceFlow-Demo-Role` 演示身份；它们不是登录认证，不能防止调用者伪造身份。仅限本机可信演示，勿对公网开放。
 
 信息不完整时，Agent 应先询问缺少的订单号或业务诉求，不应凭空猜测订单，也不应在没有明确业务依据时修改数据库。
 
@@ -86,8 +89,7 @@ Copy-Item .env.example .env
 ```
 
 `SERVICEFLOW_THINKING_MODE` 和 `SERVICEFLOW_REASONING_EFFORT` 控制 DeepSeek 的思考模式。
-项目默认使用 `enabled + high` 保持复杂中文意图质量；如果只追求简单意图的低延迟，可以在
-明确做过业务正确率回归后改为 `disabled`。
+Compose 默认关闭 thinking；实际值以环境变量为准，不声称此配置质量最优。离线测试使用 Fake Model；Compose 的模型、embedding（启用时还有 rerank）需要真实服务配置，会产生调用费用。
 
 ### 2. 启动后端和 MySQL
 
@@ -95,7 +97,7 @@ Copy-Item .env.example .env
 docker compose build
 docker compose up -d
 Invoke-RestMethod http://127.0.0.1:8009/api/v1/health
-Invoke-RestMethod -Method Post http://127.0.0.1:8009/api/v1/demo/reset
+Invoke-RestMethod -Method Post http://127.0.0.1:8009/api/v1/demo/reset -Headers @{"X-ServiceFlow-Demo-Role"="operator"}
 ```
 
 第十步本地交付还提供 Linux/WSL2 入口：
@@ -149,7 +151,7 @@ docker compose down
 正式 CD 只由版本标签触发：
 
 ```text
-v2.0.0  →  GitHub Actions  →  ghcr.io/ggbond121211/serviceflow:v2.0.0
+v2.0.1  →  GitHub Actions  →  ghcr.io/ggbond121211/serviceflow:v2.0.1
 ```
 
 可以手动运行同一个 release workflow 做 dry-run；它只构建镜像，不推送 GHCR。真实模型评测是单独的手动 workflow，需要明确配置 GitHub Environment Secrets，不会被普通 CI 或 CD 自动触发。
@@ -163,6 +165,8 @@ uv run ruff check .
 ```
 
 `ruff format` 不作为当前门禁。V1 已按 `v1.0.0` / `v1.0.1` 冻结，格式器版本差异会改变冻结文件；代码检查以 `ruff check` 为准。
+
+以下评测/压测入口针对 **V1 固定图契约**，不是 Native 2.0 质量验收；`real_stress` 尚未驱动 Native 用户确认循环，不能直接用来验收默认 Compose Native 路径。
 
 异步全链路压力测试使用核心 40 案和复杂中文 60 案，共 100 个案例。它使用确定性的
 异步回放模型，不消耗外部模型额度；100 个逻辑用户共享同一个 FastAPI、LangGraph、

@@ -285,6 +285,24 @@ async def test_circuit_open_skips_unhealthy_primary() -> None:
     assert gateway.last_call.fallback_reason == GatewayErrorClass.CIRCUIT_OPEN.value
 
 
+@pytest.mark.asyncio
+async def test_all_circuits_open_returns_typed_failure_without_provider_call() -> None:
+    from serviceflow.infrastructure.model_gateway import CircuitBreaker
+
+    circuit = CircuitBreaker(failure_threshold=1, recovery_seconds=60)
+    primary = FakeModelProvider("frontier-primary", [])
+    backup = FakeModelProvider("frontier-backup", [])
+    for key in (primary.key, backup.key):
+        circuit.failure(key)
+    gateway = ModelGateway(
+        _registry(), {primary.key: primary, backup.key: backup}, circuit_breaker=circuit
+    )
+    with pytest.raises(GatewayFailure) as caught:
+        await gateway.complete_json(system="json", user="测试")
+    assert caught.value.error_class is GatewayErrorClass.CIRCUIT_OPEN
+    assert primary.calls == backup.calls == 0
+
+
 class CapturingLimiter:
     def __init__(self, *, release_error: Exception | None = None) -> None:
         self.acquired: list[tuple[str, str]] = []

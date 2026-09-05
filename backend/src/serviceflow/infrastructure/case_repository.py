@@ -128,17 +128,20 @@ class CaseRepository:
             return None
         return _approval_to_domain(row)
 
-    async def set_approval_status(
+    async def decide_pending_approval(
         self,
         approval_id: str,
         status: ApprovalStatus,
-    ) -> Approval:
-        row = await self._session.get(ApprovalRow, approval_id)
-        if row is None:
-            raise LookupError("case_not_found")
-        row.status = status.value
-        await self._session.flush()
-        return _approval_to_domain(row)
+    ) -> Approval | None:
+        result = await self._session.execute(
+            update(ApprovalRow)
+            .where(
+                ApprovalRow.id == approval_id,
+                ApprovalRow.status == ApprovalStatus.PENDING.value,
+            )
+            .values(status=status.value)
+        )
+        return await self.get_approval(approval_id) if result.rowcount == 1 else None
 
 
 class AfterSalesCaseStore:

@@ -109,6 +109,19 @@ async def test_repeated_identical_tool_call_stops_loop() -> None:
 
 
 @pytest.mark.asyncio
+async def test_native_history_is_bounded_and_not_a_source_of_business_facts() -> None:
+    model = SequencedModel()
+    history = [{"role": "user", "content": f"历史-{index}"} for index in range(12)]
+    await ToolLoop(model=model, host=FakeHost()).run(
+        user_message="那笔订单", user_id="USER-001", tenant_id="tenant-a", history=history
+    )
+    first = model.requests[0]
+    assert first[1:-1] == history[-8:]
+    assert first[-1]["content"] == "那笔订单"
+    assert "必须重新查工具" in first[0]["content"]
+
+
+@pytest.mark.asyncio
 async def test_openai_compatible_model_parses_native_tool_calls() -> None:
     class Completions:
         async def create(self, **kwargs):
@@ -204,17 +217,6 @@ async def test_completed_high_risk_tool_uses_high_risk_review_route() -> None:
                     10,
                     3,
                 ),
-                NativeModelResult(
-                    "",
-                    (
-                        NativeToolCall(
-                            "call-2", "request_refund", {"order_id": "ORDER-001"}
-                        ),
-                    ),
-                    "primary",
-                    9,
-                    2,
-                ),
                 NativeModelResult("退款结果已复核。", (), "primary", 8, 2),
             ]
 
@@ -251,4 +253,4 @@ async def test_completed_high_risk_tool_uses_high_risk_review_route() -> None:
     )
 
     assert result.status == "COMPLETED"
-    assert model.routes == ["operation-plan", "high-risk-review", "high-risk-review"]
+    assert model.routes == ["operation-plan", "high-risk-review"]

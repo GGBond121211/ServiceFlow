@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -54,13 +55,14 @@ class ApiFakeModel:
 
 class NativeApiFakeModel:
     async def complete_with_tools(self, *, messages, tools) -> NativeModelResult:
+        cancel = messages[-1]["content"] == "Cancel ORDER-001"
         return NativeModelResult(
             content="",
             tool_calls=(
                 NativeToolCall(
                     "native-call-1",
-                    "request_refund",
-                    {"order_id": "ORDER-004"},
+                    "cancel_order" if cancel else "request_refund",
+                    {"order_id": "ORDER-001" if cancel else "ORDER-007"},
                 ),
             ),
             model="fake-native-api-model",
@@ -108,6 +110,8 @@ async def client(tmp_path: Path) -> AsyncIterator[httpx.AsyncClient]:
 
 
 async def create_conversation(client: httpx.AsyncClient, user_id: str = "USER-001") -> str:
+    client.headers["X-ServiceFlow-User"] = user_id
+    client.headers["X-ServiceFlow-Demo-Role"] = "approver"
     response = await client.post(
         "/api/v1/conversations",
         json={"user_id": user_id},
@@ -228,7 +232,7 @@ async def test_native_confirmation_resumes_the_pending_tool_and_reads_db(
     pending = (
         await native_client.post(
             f"/api/v1/conversations/{thread_id}/messages",
-            json={"message": "Refund ORDER-004"},
+            json={"message": "Refund ORDER-007"},
         )
     ).json()
 
@@ -248,6 +252,68 @@ async def test_native_confirmation_resumes_the_pending_tool_and_reads_db(
         "case_status": "completed",
     }
     assert resumed["tool_events"][-1]["code"] == "refund_completed"
+
+
+@pytest.mark.asyncio
+async def test_native_cancel_requires_confirmation_and_updates_same_database(native_client) -> None:
+    thread_id = await create_conversation(native_client)
+    base = f"/api/v1/conversations/{thread_id}"
+    pending = await native_client.post(
+        f"{base}/messages", json={"message": "Cancel ORDER-001"}
+    )
+    assert pending.json()["agent_status"] == "WAITING_CONFIRMATION"
+    assert (await native_client.get("/api/v1/orders/ORDER-001")).json()["status"] == "paid"
+    completed = await native_client.post(f"{base}/confirmations", json={"confirmed": True})
+    assert completed.json()["final_business_state"]["order_status"] == "cancelled"
+    assert (await native_client.get("/api/v1/orders/ORDER-001")).json()["status"] == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_native_confirmation_cancel_and_pending_message_guard(native_client) -> None:
+    thread_id = await create_conversation(native_client, "USER-002")
+    base = f"/api/v1/conversations/{thread_id}"
+    await native_client.post(f"{base}/messages", json={"message": "Refund ORDER-007"})
+    assert (await native_client.post(
+        f"{base}/messages", json={"message": "another request"}
+    )).status_code == 409
+    cancelled = await native_client.post(f"{base}/confirmations", json={"confirmed": False})
+    assert cancelled.json()["agent_status"] == "CANCELLED"
+    assert (await native_client.post(
+        f"{base}/confirmations", json={"confirmed": True}
+    )).status_code == 409
+    order = await native_client.get("/api/v1/orders/ORDER-007")
+    assert order.json()["status"] == "delivered"
+
+
+@pytest.mark.asyncio
+async def test_native_parallel_confirmation_consumes_once(native_client) -> None:
+    thread_id = await create_conversation(native_client, "USER-002")
+    base = f"/api/v1/conversations/{thread_id}"
+    await native_client.post(f"{base}/messages", json={"message": "Refund ORDER-007"})
+    responses = await asyncio.gather(*[
+        native_client.post(f"{base}/confirmations", json={"confirmed": True}) for _ in range(2)
+    ])
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    assert (await native_client.get("/api/v1/orders/ORDER-007")).json()["status"] == "refunded"
+
+
+@pytest.mark.asyncio
+async def test_demo_identity_and_role_are_explicit(client) -> None:
+    thread_id = await create_conversation(client)
+    pending = (await client.post(
+        f"/api/v1/conversations/{thread_id}/messages", json={"message": "Refund ORDER-003"}
+    )).json()
+    approval_id = pending["approval"]["id"]
+    response = await client.post(
+        f"/api/v1/conversations/{thread_id}/approvals/{approval_id}",
+        json={"approved": True}, headers={"X-ServiceFlow-Demo-Role": "customer"},
+    )
+    assert response.status_code == 403
+    client.headers["X-ServiceFlow-User"] = "USER-002"
+    assert (await client.get(f"/api/v1/conversations/{thread_id}")).status_code == 403
+    assert (await client.get("/api/v1/orders/ORDER-003")).status_code == 403
+    assert (await client.get(f"/api/v1/cases/{approval_id}")).status_code == 403
+    assert (await client.post("/api/v1/demo/reset")).status_code == 403
 
 
 @pytest.mark.asyncio
@@ -318,13 +384,14 @@ async def test_native_confirmation_survives_api_app_restart(tmp_path: Path) -> N
         pending = (
             await first.post(
                 f"/api/v1/conversations/{thread_id}/messages",
-                json={"message": "Refund ORDER-004"},
+                json={"message": "Refund ORDER-007"},
             )
         ).json()
 
     second_app = create_app(model=NativeApiFakeModel(), session_factory=factory)
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=second_app), base_url="http://testserver"
+        transport=httpx.ASGITransport(app=second_app), base_url="http://testserver",
+        headers={"X-ServiceFlow-User": "USER-002"},
     ) as second:
         restored = (await second.get(f"/api/v1/conversations/{thread_id}")).json()
         completed = (
@@ -358,12 +425,12 @@ async def test_confirmation_rejects_tampered_pending_arguments(tmp_path: Path) -
         thread_id = await create_conversation(client, user_id="USER-002")
         await client.post(
             f"/api/v1/conversations/{thread_id}/messages",
-            json={"message": "Refund ORDER-004"},
+            json={"message": "Refund ORDER-007"},
         )
         graph = application.state.agent_graph
         state = (await graph.aget_state({"configurable": {"thread_id": thread_id}})).values
         pending = dict(state["pending_tool_call"])
-        pending["arguments"] = {"order_id": "ORDER-007"}
+        pending["arguments"] = {"order_id": "ORDER-004"}
         await graph.aupdate_state(
             {"configurable": {"thread_id": thread_id}},
             {"pending_tool_call": pending},

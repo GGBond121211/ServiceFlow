@@ -108,6 +108,14 @@ class ApprovalRow(Base):
 # ---------------------------------------------------------------------------
 
 
+class ConfirmationClaimRow(Base):
+    __tablename__ = "confirmation_claims"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(64), index=True)
+    claimed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ConversationSessionRow(Base):
     """一次对话。V1 只有 LangGraph 的 thread_id，回答不了"这个用户还有几个
     没办完的售后"。"""

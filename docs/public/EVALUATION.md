@@ -158,6 +158,12 @@ uv run python -m serviceflow.evaluation.real_stress `
 
 ## 2.0 Step 9 baseline 边界
 
+2.0.1 软件回归与改动理由见 [发布说明](RELEASE-2.0.1.md)。`serviceflow eval`、
+`async-stress` 和 `real_stress` 是 V1 固定图评测入口；尤其 `real_stress` 尚未处理 Native
+用户确认循环，不能直接据此声称验证了默认 Compose Native 全路径。
+CI `eval-smoke` 只枚举案例清单，不执行真实模型任务。132 条是案例资产数量，
+不是通过数；软件回归也不能代替总体误拦截率、拒答精确率和任务完成率实验。
+
 2.0 Step 9 已完成工程 baseline 收口，但没有把参考默认值写成质量最优结论：
 
 - V2 当前为 132 条，Policy RAG 为 103 条文档和 28 条查询；holdout 16 条保持锁定；

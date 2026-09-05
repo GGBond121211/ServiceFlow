@@ -24,6 +24,15 @@ from serviceflow.infrastructure.qdrant_policy_store import ExactPolicyStore, Pol
 from serviceflow.infrastructure.trace_context import trace_id_from_traceparent
 
 
+def test_runtime_telemetry_does_not_retain_span_copies(monkeypatch) -> None:
+    monkeypatch.delenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", raising=False)
+    telemetry = Telemetry.from_env(sample_ratio=1)
+    with telemetry.span("runtime-test"):
+        assert telemetry.current_traceparent()
+    assert telemetry.finished_spans() == ()
+    telemetry.shutdown()
+
+
 class TraceProvider:
     key = "frontier-primary"
 
@@ -113,6 +122,9 @@ async def test_http_gateway_tool_provider_worker_share_one_trace(
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            client.headers.update({
+                "X-ServiceFlow-User": "USER-001", "X-ServiceFlow-Demo-Role": "operator"
+            })
             assert (await client.post("/api/v1/demo/reset")).status_code == 200
             conversation = await client.post(
                 "/api/v1/conversations", json={"user_id": "USER-001"}

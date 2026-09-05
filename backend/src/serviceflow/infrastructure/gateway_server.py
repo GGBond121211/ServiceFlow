@@ -29,8 +29,10 @@ def create_gateway_app(
     gateway: ModelGateway | Any | None = None,
     *,
     internal_key: str | None = None,
+    telemetry: Telemetry | None = None,
 ) -> FastAPI:
-    telemetry = Telemetry.from_env(
+    owns_telemetry = telemetry is None
+    telemetry = telemetry or Telemetry.from_env(
         sample_ratio=float(os.getenv("SERVICEFLOW_TRACE_SAMPLE_RATIO", "1"))
     )
 
@@ -45,6 +47,8 @@ def create_gateway_app(
                 audit_sink=GatewayAuditWriter(SessionFactory),
             )
         yield
+        if owns_telemetry:
+            telemetry.shutdown()
 
     application = FastAPI(
         title="ServiceFlow LLM Gateway", version="step8.1-v1", lifespan=lifespan

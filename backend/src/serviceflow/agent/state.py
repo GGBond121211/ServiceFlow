@@ -60,3 +60,4 @@ class AgentState(TypedDict, total=False):
     approval_granted: bool
     pending_tool_call: dict[str, object] | None
     pending_code: str | None
+    conversation_history: list[dict[str, object]]

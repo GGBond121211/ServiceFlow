@@ -15,7 +15,7 @@ DEFAULT_POLICY_PATH = (
     Path(__file__).parents[4]
     / "experiments"
     / "policy_documents"
-    / "serviceflow_policy_v2_expanded.jsonl"
+    / "serviceflow_policy_v2_complete.jsonl"
 )
 def load_policy_documents(path: Path = DEFAULT_POLICY_PATH) -> tuple[PolicyDocument, ...]:
     documents = []
