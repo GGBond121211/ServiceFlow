@@ -25,8 +25,6 @@ def test_step10_delivery_files_are_present_and_scoped() -> None:
         "deploy/k8s/base/kustomization.yaml",
         "docs/public/DEPLOYMENT.md",
         "docs/public/OPERATIONS.md",
-        "docs/public/PORTFOLIO.md",
-        "docs/public/INTERVIEW_DEMO.md",
     )
     assert all((ROOT / path).is_file() for path in required)
 

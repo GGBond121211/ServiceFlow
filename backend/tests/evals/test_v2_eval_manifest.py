@@ -45,7 +45,7 @@ EXPECTED_BY_SPLIT = {
 EXPECTED_INJECTION_TOTAL = 18
 EXPECTED_FALSE_POSITIVE_TOTAL = 9
 
-# 中文语言理解难度：V1 complex_60 退役后由这批承接（用户 2026-09-03 决定停用 V1）
+# 中文语言理解难度：V1 complex_60 退役后由这批承接
 LANGUAGE_CATEGORIES = {
     V2Category.BLENDED_INTENT,
     V2Category.IMPLICIT_INTENT,
@@ -58,7 +58,7 @@ LANGUAGE_CATEGORIES = {
 EXPECTED_LANGUAGE_TOTAL = 48
 MIN_UNKNOWN_INFO_RATIO = 0.30  # τ²-bench retail 是 78%，009 无身份验证环节，合理区间更低
 
-# V1 已由用户决定停用（冻结保留，不参与日常测试）。这里仍校验条数，防止有人误改。
+# V1 已停用（冻结保留，不参与日常测试）。这里仍校验条数，防止有人误改。
 EXPECTED_V1_COUNTS = {"serviceflow_v1.jsonl": 40, "serviceflow_v1_complex_60.jsonl": 60}
 
 

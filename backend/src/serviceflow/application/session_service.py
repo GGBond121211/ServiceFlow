@@ -2,7 +2,7 @@
 
 业务规则来自 policies.py，状态判定来自 cases.apply_transition，
 幂等判定来自 operations.classify_replay——本层只负责落库、审计和并发复查。
-事务边界见 experiments/DECISIONS.md S2-12。
+事务边界由本服务方法和持久化调用共同维护。
 """
 
 from collections.abc import Mapping
@@ -323,7 +323,7 @@ class SessionService:
     ) -> OperationBegin:
         # 并发路径：两个协程可能同时读到 existing is None 并都判 FIRST_ATTEMPT。
         # action_id 的唯一约束让其中一个 INSERT 失败、insert() 返回 None，
-        # 此时重读重判变成 IN_FLIGHT。详见 DECISIONS.md S2-7。
+        # 此时重读重判变成 IN_FLIGHT。
         now = _now()
         fingerprint = request_fingerprint(
             action_type=action_type, case_id=case_id, payload=payload
@@ -444,7 +444,7 @@ class SessionService:
     # --- 终态 ---------------------------------------------------------------
 
     async def final_state(self, case_id: str) -> dict[str, Any]:
-        # 不接受任何模型输出作为输入——CLAUDE.md §3「终态必须回读数据库」。
+        # 不接受任何模型输出作为输入；终态必须回读数据库。
         async with self._session_factory() as db:
             case = await AfterSalesCaseStore(db).get(case_id)
             if case is None:

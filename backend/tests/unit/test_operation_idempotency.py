@@ -110,7 +110,7 @@ def test_fingerprint_distinguishes_action_type_and_case() -> None:
 def test_fingerprint_is_stable_across_processes() -> None:
     """跨进程稳定——不能依赖 PYTHONHASHSEED，否则重启后幂等键全变。
 
-    只起 1 个 subprocess（CLAUDE.md §2.4 R4）：设了 PYTHONHASHSEED 的子进程
+    只起 1 个 subprocess：设了 PYTHONHASHSEED 的子进程
     与本进程结果相同，就已经证明了指纹不依赖哈希随机化。
     """
     script = (

@@ -1,6 +1,6 @@
 """AfterSalesCase 及其状态机。纯函数，无 I/O。
 
-设计论证见 docs/2.0-WORKLOG.md「Step 2」与 experiments/DECISIONS.md S2-3、S2-4、S2-5。
+状态转换保持为纯函数，便于重复测试。
 """
 
 from collections.abc import Mapping

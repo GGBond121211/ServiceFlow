@@ -3,7 +3,7 @@
 对应 Step 2 验收第 1、2 条，以及那条边界：MySQL 业务状态是最终事实，
 checkpoint 是恢复上下文，Event Log 是审计，三者不能互相冒充。
 
-**测试成本纪律（CLAUDE.md §2.4 R4）**：起 subprocess 每次约 7 秒（要重新
+**测试成本纪律**：起 subprocess 每次约 7 秒（要重新
 import langgraph）。全文件**只起 2 次**，集中在 `cross_process` 这个 module 级
 fixture 里——那是唯一无法用同进程证明的事（模块缓存、事件循环状态都还在，
 同进程换 engine 证明不了进程重启）。其余测试要么同进程跑图，要么直接调

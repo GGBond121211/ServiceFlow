@@ -1,6 +1,5 @@
 """ConversationSession 与 AfterSalesGoal 的持久化。
 
-从 case_repository.py 拆出来的理由见 experiments/DECISIONS.md S2-9。
 """
 
 from datetime import datetime

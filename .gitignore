@@ -32,9 +32,17 @@ work/*
 docs/*
 !docs/public/
 !docs/public/**
-!docs/knowledge/
-!docs/knowledge/java-guide-ai/
-!docs/knowledge/java-guide-ai/**
+docs/public/PORTFOLIO.md
+docs/public/INTERVIEW_DEMO.md
+
+# 实验过程、历史决策和逐次结果不进入公开仓库。
+# 运行 CI 所需的实验脚本、合成政策语料和评分范围配置仍公开保留。
+experiments/DECISIONS.md
+experiments/decision_records/
+experiments/results/
+experiments/configs/*
+!experiments/configs/
+!experiments/configs/policy_score_scope.json
 
 # 评测结果在本地生成，不把运行元数据固定进仓库
 outputs/*

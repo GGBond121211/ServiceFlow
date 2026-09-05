@@ -1,7 +1,7 @@
-const ROOT = "C:\\Users\\Alex\\Desktop\\workspace\\Project-0009-ServiceFlow";
+const ROOT = "<repository-root>";
 
 const PATHS = {
-  learningPlan: `${ROOT}\\.hermes\\plans\\2026-08-19_145615-serviceflow-backend-interview-learning.md`,
+  learningPlan: `${ROOT}\\(internal learning plan not published)`,
   frontend: `${ROOT}\\frontend\\app.js`,
   schemas: `${ROOT}\\backend\\src\\serviceflow\\api\\schemas.py`,
   routes: `${ROOT}\\backend\\src\\serviceflow\\api\\routes.py`,

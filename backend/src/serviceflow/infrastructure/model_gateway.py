@@ -450,7 +450,7 @@ def build_model_gateway_from_env(
     if not api_key or not base_url:
         raise RuntimeError("Gateway 缺少 SERVICEFLOW_API_KEY 或 SERVICEFLOW_BASE_URL")
     backup_model = os.getenv("SERVICEFLOW_GATEWAY_BACKUP_MODEL", "gpt-5.6-luna")
-    price_note = "Frontier 控制台定价页，用户登录态截图核对"
+    price_note = "配置中的参考价格，仅用于本地成本估算"
     primary_prices = _frontier_prices(primary_model)
     backup_prices = _frontier_prices(backup_model)
     profiles = (
