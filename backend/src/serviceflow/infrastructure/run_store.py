@@ -1,6 +1,5 @@
 """Run 与 RunSnapshot：模型的一次运行，和它的恢复点。
 
-与 LangGraph checkpoint 的分工见 experiments/DECISIONS.md S2-10。
 硬约束：不保存模型隐藏推理，由 _FORBIDDEN_KEYS 在 save_snapshot 里代码级拦截。
 """
 

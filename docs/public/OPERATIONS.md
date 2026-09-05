@@ -84,7 +84,5 @@ SERVICEFLOW_PREVIOUS_IMAGE=ghcr.io/OWNER/REPO:v1.0.1 ./ops/scripts/rollback.sh
 
 ## Step 10 故障排障记录
 
-实际的部署与 Gateway 副本故障排障记录见
-`experiments/decision_records/step10_gateway_failover_postmortem.md`，包括 Collector readiness
-失败、命令、观察、根因、修复、Gateway 故障切换和防复发措施。当前文档中的命令是可复制的诊断
-基线，不是生产 SLO。
+第十步的部署与 Gateway 故障验证收敛为本文件中的可复制诊断命令；内部排障过程和逐次
+postmortem 不纳入公开仓库。当前文档中的命令是可复制的诊断基线，不是生产 SLO。

@@ -1,7 +1,6 @@
 """SqlAlchemyCheckpointSaver：LangGraph checkpoint 落关系库，替代 InMemorySaver。
 
-三张表照 InMemorySaver 的内部布局落地；选型理由见 DECISIONS.md S2-1、S2-2。
-checkpoint 是恢复上下文不是事实源；每个方法各自 commit；只实现异步接口。
+三张表复现检查点持久化契约；checkpoint 是恢复上下文不是事实源；每个方法各自 commit；只实现异步接口。
 """
 
 from collections.abc import AsyncIterator, Iterator, Sequence

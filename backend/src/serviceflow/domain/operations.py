@@ -1,7 +1,7 @@
 """Operation：一次有副作用的操作，及其幂等判定。纯函数，无 I/O。
 
 refunds / tickets / approvals 三张 V1 表是业务结果，Operation 是执行过程。
-设计论证见 docs/2.0-WORKLOG.md「Step 2」与 experiments/DECISIONS.md S2-5、S2-6。
+幂等判定保持为纯函数，便于重复测试。
 """
 
 import json

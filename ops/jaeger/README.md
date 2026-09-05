@@ -1,6 +1,6 @@
 # Jaeger 本地 Trace 后端
 
-Compose 中的 `jaeger` 使用 all-in-one 镜像，只用于本地开发、故障注入和面试展示。
+Compose 中的 `jaeger` 使用 all-in-one 镜像，只用于本地开发和故障注入演示。
 `api`、`gateway-a/b` 和 `worker` 通过 OTLP HTTP 把 Span 发给 `otel-collector`，Collector
 再通过 OTLP gRPC 导出到 Jaeger。
 

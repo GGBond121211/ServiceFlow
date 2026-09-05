@@ -1,7 +1,6 @@
 """ConversationSession 与 AfterSalesGoal。纯函数，无 I/O。
 
 核心不变量：一个 Goal 不能被无声地改成另一个案件。resolve_goal 是这条规则的唯一落点。
-设计论证见 docs/2.0-WORKLOG.md「Step 2」。
 """
 
 from dataclasses import dataclass, field

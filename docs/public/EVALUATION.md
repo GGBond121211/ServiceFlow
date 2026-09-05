@@ -162,7 +162,7 @@ uv run python -m serviceflow.evaluation.real_stress `
 
 - V2 当前为 132 条，Policy RAG 为 103 条文档和 28 条查询；holdout 16 条保持锁定；
 - BM25 `1.2/0.75`、RRF `60`、Qdrant `M=16`、政策条款边界、rerank `10→5` 和 Tool Loop `5/12`
-  记录在 `experiments/configs/step9_baseline_profile.yaml`；
+  是当前 baseline 的参考默认值；内部实验配置和逐次结果不纳入公开仓库；
 - `reference-only`、`measured-smoke-only` 和 `untested` 分开标记；
 - dev/regression 拆分、完整 V2 逐案质量 Runner、FPR 扩展、模型/参数 A/B、Policy 语料扩充和大规模
   并发实验延期到 2.1+。

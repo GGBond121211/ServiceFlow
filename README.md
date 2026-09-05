@@ -18,7 +18,7 @@ ServiceFlow 是一个面向模拟电商售后的单 Agent 工作流。用户用�
 - **可观测与部署**：OpenTelemetry → Collector → Jaeger、Prometheus、Grafana、双 Gateway 故障切换、Docker Compose 和本地 Kubernetes manifest；
 - **CI/CD**：Push/PR 自动运行代码检查、测试、确定性评测清单和容器构建；推送 `v*.*.*` 标签时构建并发布不可变 GHCR 镜像，CD 也提供不推送镜像的手动 dry-run。
 
-2.0 是面向学习、作品集和面试演示的本地模拟系统，不连接真实商城、支付、物流或客服系统。Compose 观测栈和 Kubernetes manifest 是可复现演示能力，不等于生产 HA、生产 IAM、生产容量或生产 SLA。
+2.0 是面向学习、作品集和面试演示的本地模拟系统，不连接真实商城、支付、物流或客服系统。Compose 观测栈和 Kubernetes manifest 是可复现演示能力
 
 一条完整的 Agent 业务闭环：
 
@@ -264,7 +264,7 @@ ServiceFlow/
 - [评测说明](docs/public/EVALUATION.md)
 - [部署说明](docs/public/DEPLOYMENT.md)
 - [运维 Runbook](docs/public/OPERATIONS.md)
-- [作品集与面试讲法](docs/public/PORTFOLIO.md)
+
 
 ## License
 

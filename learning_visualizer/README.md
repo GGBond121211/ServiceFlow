@@ -4,10 +4,10 @@
 
 ## 学习计划来源
 
-权威计划文件：
+计划内容来自本地内部学习资料，该资料未随公开仓库发布：
 
 ```text
-C:\Users\Alex\Desktop\Mirasim\Project-0009-ServiceFlow\.hermes\plans\2026-08-19_145615-serviceflow-backend-interview-learning.md
+内部学习计划（未发布）
 ```
 
 页面顶部把计划整理为 3 天、6 个单元：
@@ -39,7 +39,7 @@ C:\Users\Alex\Desktop\Mirasim\Project-0009-ServiceFlow\.hermes\plans\2026-08-19_
 
 ## 交互
 
-- 点击节点查看函数完整绝对路径、内部调用、输入、输出和失败分支；
+- 点击节点查看仓库相对路径、内部调用、输入、输出和失败分支；
 - “上一步 / 当前 / 下一步”区域可以直接在相邻函数间跳转；
 - 支持重新开始、上一步、下一步、播放和暂停；
 - 当前节点、已经过节点、连线、进度和教学数据包同步更新；
@@ -50,7 +50,7 @@ C:\Users\Alex\Desktop\Mirasim\Project-0009-ServiceFlow\.hermes\plans\2026-08-19_
 可以直接打开 `index.html`，也可以启动本地静态服务器：
 
 ```powershell
-cd C:\Users\Alex\Desktop\Mirasim\Project-0009-ServiceFlow\learning_visualizer
+cd learning_visualizer
 python -m http.server 4173 --bind 127.0.0.1
 ```
 
