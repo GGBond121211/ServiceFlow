@@ -1,0 +1,19 @@
+{
+  "run_date": "2026-09-05",
+  "route_version": "step8-v1",
+  "scope": "four observed real gateway audit rows; routing only",
+  "baseline": {
+    "deepseek-v4-flash": 1.0,
+    "gpt-5.6-luna": 0.0
+  },
+  "current": {
+    "deepseek-v4-flash": 1.0,
+    "gpt-5.6-luna": 0.0
+  },
+  "drifted": false,
+  "max_distribution_shift": 0.0,
+  "quality_gate_evaluated": false,
+  "observed_task_quality_pass_rate": null,
+  "requires_model_ab_from_distribution_only": false,
+  "boundary": "The four requests are smoke observations, not a Step 9 quality baseline. A synthetic drift contract is covered by test_route_drift_report.py."
+}

@@ -1,0 +1,20 @@
+{
+  "experiment": "step3-frontier-deepseek-smoke",
+  "executed_at": "2026-09-03",
+  "base_url": "https://api.frontier-intelligence.tech/v1",
+  "requested_model": "deepseek-v4-flash",
+  "returned_model": "deepseek-v4-flash",
+  "thinking_mode": "disabled",
+  "reasoning_effort": null,
+  "json_mode": true,
+  "input_tokens": 46,
+  "output_tokens": 15,
+  "elapsed_ms": 3229.11,
+  "request_count": 1,
+  "response": {
+    "requested_action": "query",
+    "issue_type": "general"
+  },
+  "scope": "single adapter smoke; not full Agent evaluation",
+  "api_key_recorded": false
+}

@@ -1,7 +1,8 @@
+from datetime import UTC, datetime
 from time import perf_counter
-from typing import Any
+from typing import Any, overload
 
-from sqlalchemy import event
+from sqlalchemy import event, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -44,11 +45,44 @@ def ensure_database_schema(connection: Connection) -> None:
     for table in Base.metadata.tables.values():
         for index in table.indexes:
             index.create(connection, checkfirst=True)
+    connection.execute(
+        text(
+            "UPDATE operations SET status = CASE status "
+            "WHEN 'requested' THEN 'confirmation_required' "
+            "WHEN 'confirmed' THEN 'dispatched' "
+            "WHEN 'approved' THEN 'dispatched' "
+            "WHEN 'started' THEN 'dispatched' "
+            "WHEN 'compensated' THEN 'succeeded' "
+            "WHEN 'abandoned' THEN 'manual_required' "
+            "ELSE status END "
+            "WHERE status IN "
+            "('requested','confirmed','approved','started','compensated','abandoned')"
+        )
+    )
 
 
 async def drop_database_schema(engine: AsyncEngine) -> None:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.drop_all)
+
+
+@overload
+def ensure_utc(value: datetime) -> datetime: ...
+
+
+@overload
+def ensure_utc(value: None) -> None: ...
+
+
+def ensure_utc(value: datetime | None) -> datetime | None:
+    """给从数据库读回来的 naive datetime 补上 UTC 时区。
+
+    SQLite 不存时区，`DateTime(timezone=True)` 读回来是 naive 的；MySQL 同理。
+    2.0 新增的几个 store 都要做这件事，所以放在这里共用，而不是各写一份。
+    """
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=UTC)
 
 
 def _install_sql_timing(engine: AsyncEngine) -> None:

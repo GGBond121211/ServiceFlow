@@ -1,0 +1,87 @@
+# 候选模型池 —— Step 8 运行路由，Step 9 再做完整质量/成本 A/B。
+# ◆ 是 Frontier 消费额度，不是质量评分；单价来自用户登录后的控制台定价页。
+
+catalog_checked_at: "2026-09-05"
+catalog_source: "Frontier Intelligence GET /v1/models"
+shared_failure_domain: >
+  当前候选共用 Frontier Base URL 与同一凭据；模型切换只覆盖模型级限流、5xx、
+  timeout、连接和响应能力故障，不构成独立 Provider 灾备。
+
+selection_criteria:
+  must_have:
+    native_tool_calling: true
+    structured_output: json_mode_or_schema
+    chinese_capability: 中文售后意图、澄清与工具参数生成
+  safety_invariant: >
+    fallback 不能绕过 Policy、ACL、确认、审批、幂等、UNKNOWN 对账和数据库终态回读。
+  budget_constraint: 学生个人项目；完整评测成本需可承受
+
+why_only_these: >
+  Frontier /v1/models 在 2026-09-05 返回 18 个 ID。Step 8 只保留两个已做同一套
+  JSON、中文售后和 Native Tool Calling smoke 的代表：deepseek-v4-flash 作为当前
+  默认主模型，gpt-5.6-luna 作为低成本候选备用。deepseek-v4-pro、gpt-5.6-sol、
+  gpt-5.6-terra、glm-5.2、kimi-k3 等目录可见模型未做本轮完整能力/价格/任务质量
+  对照，因此不进入运行 fallback 链；Step 9 有预算时再扩展 A/B。
+
+tiers:
+  fast:
+    purpose: intent extraction / clarification
+    candidates: [frontier-gpt-5.6-luna]
+  balanced:
+    purpose: policy answer / operation plan / final response
+    candidates: [frontier-deepseek-v4-flash, frontier-gpt-5.6-luna]
+  flagship:
+    purpose: high-risk review
+    candidates: [frontier-deepseek-v4-flash]
+    note: 当前没有通过完整对照的强模型升级链；能力不足时转人工
+
+candidates:
+  - id: frontier-deepseek-v4-flash
+    provider: Frontier Intelligence shared domain
+    model: deepseek-v4-flash
+    native_tool_calling: true
+    parallel_tool_calls: unverified
+    structured_output: json_mode
+    context_length: 1000000
+    context_length_source: "Frontier console model card"
+    chinese_capability: bounded_smoke_passed
+    price:
+      input_per_1m_frontier_diamond: 12
+      output_per_1m_frontier_diamond: 36
+      cached_input_per_1m_frontier_diamond: 0.3996
+      priced_at: "2026-09-05"
+      source: "Frontier console pricing page verified in user-authenticated session"
+    evidence: experiments/results/step8-frontier-model-capability-smoke-2026-09-05.json
+    route_status: default_primary_and_current_preferred_design
+    selected_reason: >
+      现有项目默认模型；本次 JSON、中文 next_action 和 get_order Native Tool Calling
+      smoke 全通过，合计输入 507、输出 652 tokens。未宣称客观最优。
+    rejected_reason: null
+
+  - id: frontier-gpt-5.6-luna
+    provider: Frontier Intelligence shared domain
+    model: gpt-5.6-luna
+    native_tool_calling: true
+    parallel_tool_calls: unverified
+    structured_output: json_mode
+    context_length: 1000000
+    context_length_source: "Frontier console model card"
+    chinese_capability: bounded_smoke_passed
+    price:
+      input_per_1m_frontier_diamond: 1.5
+      output_per_1m_frontier_diamond: 12
+      cached_input_per_1m_frontier_diamond: 0.18
+      priced_at: "2026-09-05"
+      source: "Frontier console pricing page verified in user-authenticated session"
+    evidence: experiments/results/step8-frontier-model-capability-smoke-2026-09-05.json
+    route_status: fallback_candidate
+    selected_reason: >
+      用户要求优先考察低成本候选；本次 JSON、中文 next_action 和 get_order Native
+      Tool Calling smoke 全通过，合计输入 704、输出 115 tokens。控制台 ◆ 输入/输出
+      单价均低于当前主模型，因此作为低成本备用；完整任务质量仍待 Step 9 A/B。
+    rejected_reason: null
+
+simulator_model:
+  purpose: 扮演用户，仅在 record 模式调用
+  selected: null
+  constraint: 与被测 Agent 不同，减少自我对弈偏差；Step 9 决定

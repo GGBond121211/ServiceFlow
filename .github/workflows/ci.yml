@@ -1,0 +1,70 @@
+name: ServiceFlow CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: serviceflow-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --locked
+      - name: Ruff lint
+        working-directory: backend
+        run: uv run ruff check .
+      - name: Python compile/type smoke
+        working-directory: backend
+        run: uv run python -m compileall -q src tests
+      - name: Unit, API, integration and contract tests
+        working-directory: backend
+        run: uv run python -m pytest -q --basetemp=../work/pytest-ci
+
+  eval-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync --locked
+      - name: Generate deterministic evaluation inventory
+        working-directory: backend
+        run: |
+          mkdir -p ../work/eval-smoke
+          uv run python ../experiments/runner.py list | tee ../work/eval-smoke/inventory.txt
+          echo "### Evaluation smoke" >> "$GITHUB_STEP_SUMMARY"
+          cat ../work/eval-smoke/inventory.txt >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload evaluation artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: serviceflow-eval-smoke
+          path: work/eval-smoke
+
+  docker-and-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build application image
+        run: docker build --tag serviceflow:ci ./backend

@@ -1,10 +1,14 @@
+import json
+import os
+import sys
 from collections.abc import Mapping
+from datetime import UTC, datetime
+from hashlib import sha256
 from time import perf_counter
 from typing import cast
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from sqlalchemy import func, select
@@ -19,6 +23,7 @@ from serviceflow.api.schemas import (
     ApprovalResponse,
     CaseResponse,
     CaseSummaryResponse,
+    ConfirmationRequest,
     ConversationCreateRequest,
     ConversationMessageRequest,
     ConversationResponse,
@@ -31,11 +36,24 @@ from serviceflow.api.schemas import (
 )
 from serviceflow.application.case_service import CaseService
 from serviceflow.application.order_service import OrderService
-from serviceflow.domain.models import Approval, Order, Refund, Ticket
+from serviceflow.application.session_service import SessionService
+from serviceflow.domain.models import Approval, Order, Refund, RequestedAction, Ticket
+from serviceflow.domain.sessions import Channel, ConversationSession
+from serviceflow.infrastructure.approval_service import ApprovalService
+from serviceflow.infrastructure.audit_store import GatewayAuditWriter
+from serviceflow.infrastructure.authorization import Principal
+from serviceflow.infrastructure.checkpoint_store import SqlAlchemyCheckpointSaver
 from serviceflow.infrastructure.database import ensure_database_schema
+from serviceflow.infrastructure.gateway_context import bind_gateway_context
+from serviceflow.infrastructure.model_gateway import build_model_gateway_from_env
 from serviceflow.infrastructure.seed import seed_database
 from serviceflow.infrastructure.tables import OrderRow, UserRow
 from serviceflow.infrastructure.timing import add_timing, measure_timing
+from serviceflow.infrastructure.tool_executor import ToolExecutor
+from serviceflow.mcp.client import MCPClient
+from serviceflow.mcp.host import MCPHost
+from serviceflow.mcp.server import MCPServer
+from serviceflow.mcp.stdio_client import StdioMCPClient
 
 router = APIRouter(prefix="/api/v1")
 
@@ -99,7 +117,12 @@ async def create_conversation(
     request: Request,
 ) -> ConversationResponse:
     thread_id = f"demo-{uuid4().hex[:12]}"
-    _conversations(request)[thread_id] = payload.user_id
+    await SessionService(request.app.state.agent_session_factory).start_session(
+        tenant_id="default",
+        user_id=payload.user_id,
+        channel=Channel.WEB,
+        session_id=thread_id,
+    )
     return _timed_conversation_response(thread_id, {})
 
 
@@ -109,27 +132,36 @@ async def send_conversation_message(
     payload: ConversationMessageRequest,
     request: Request,
 ) -> ConversationResponse:
-    user_id = _conversation_user(request, thread_id)
+    conversation = await _conversation_session(request, thread_id)
+    user_id = conversation.user_id
     graph = _agent_graph(request)
+    run_id = f"RUN-{uuid4().hex[:12].upper()}"
     with measure_timing("graph_ms"):
-        state = await graph.ainvoke(
-            {
-                "thread_id": thread_id,
-                "user_id": user_id,
-                "user_message": payload.message,
-                "reference_date": DEMO_REFERENCE_DATE,
-            },
-            config=_thread_config(thread_id),
-        )
+        with bind_gateway_context(
+            tenant_id=conversation.tenant_id,
+            request_id=f"REQ-{uuid4().hex[:12].upper()}",
+            session_id=thread_id,
+            run_id=run_id,
+        ):
+            state = await graph.ainvoke(
+                {
+                    "thread_id": thread_id,
+                    "session_id": thread_id,
+                    "tenant_id": conversation.tenant_id,
+                    "run_id": run_id,
+                    "user_id": user_id,
+                    "user_message": payload.message,
+                    "reference_date": DEMO_REFERENCE_DATE,
+                },
+                config=_thread_config(thread_id),
+            )
     return _timed_conversation_response(thread_id, state)
 
 
 @router.get("/conversations/{thread_id}", response_model=ConversationResponse)
 async def get_conversation(thread_id: str, request: Request) -> ConversationResponse:
-    _conversation_user(request, thread_id)
-    graph = request.app.state.agent_graph
-    if graph is None:
-        return _timed_conversation_response(thread_id, {})
+    await _conversation_user(request, thread_id)
+    graph = _agent_graph(request)
     with measure_timing("graph_state_ms"):
         state = (await graph.aget_state(_thread_config(thread_id))).values
     return _timed_conversation_response(thread_id, state)
@@ -145,17 +177,44 @@ async def decide_conversation_approval(
     payload: ApprovalDecisionRequest,
     request: Request,
 ) -> ConversationResponse:
-    _conversation_user(request, thread_id)
+    user_id = await _conversation_user(request, thread_id)
     graph = _agent_graph(request)
     with measure_timing("graph_state_ms"):
         state = (await graph.aget_state(_thread_config(thread_id))).values
     if state.get("approval_id") != approval_id:
         raise HTTPException(status_code=404, detail="approval_not_found")
+    if state.get("agent_status") == "WAITING_APPROVAL":
+        resumed = await _resume_native_approval(
+            request, graph, state, payload.approved, subject_user_id=user_id
+        )
+        return _timed_conversation_response(thread_id, resumed)
     with measure_timing("graph_ms"):
         resumed = await graph.ainvoke(
             Command(resume={"approved": payload.approved}),
             config=_thread_config(thread_id),
         )
+    return _timed_conversation_response(thread_id, resumed)
+
+
+@router.post(
+    "/conversations/{thread_id}/confirmations",
+    response_model=ConversationResponse,
+)
+async def confirm_conversation_action(
+    thread_id: str,
+    payload: ConfirmationRequest,
+    request: Request,
+) -> ConversationResponse:
+    user_id = await _conversation_user(request, thread_id)
+    graph = _agent_graph(request)
+    state = (await graph.aget_state(_thread_config(thread_id))).values
+    pending = state.get("pending_tool_call")
+    if state.get("agent_status") != "WAITING_CONFIRMATION" or not isinstance(pending, dict):
+        raise HTTPException(status_code=409, detail="confirmation_not_pending")
+    if not payload.confirmed:
+        return _timed_conversation_response(thread_id, state)
+    _validate_pending_binding(pending, user_id=user_id, tenant_id="default")
+    resumed = await _resume_native_confirmation(request, graph, state, pending)
     return _timed_conversation_response(thread_id, resumed)
 
 
@@ -186,7 +245,7 @@ def _order_response(order: Order) -> OrderResponse:
 
 
 def _ensure_session_schema(session: Session) -> None:
-    ensure_database_schema(session.get_bind())
+    ensure_database_schema(session.connection())
 
 
 def _case_type(case: Refund | Ticket | Approval) -> str:
@@ -197,15 +256,17 @@ def _case_type(case: Refund | Ticket | Approval) -> str:
     return "approval"
 
 
-def _conversations(request: Request) -> dict[str, str]:
-    return cast(dict[str, str], request.app.state.conversations)
+async def _conversation_user(request: Request, thread_id: str) -> str:
+    return (await _conversation_session(request, thread_id)).user_id
 
 
-def _conversation_user(request: Request, thread_id: str) -> str:
-    user_id = _conversations(request).get(thread_id)
-    if user_id is None:
+async def _conversation_session(
+    request: Request, thread_id: str
+) -> ConversationSession:
+    session = await SessionService(request.app.state.agent_session_factory).load_session(thread_id)
+    if session is None:
         raise HTTPException(status_code=404, detail="conversation_not_found")
-    return user_id
+    return session
 
 
 def _agent_graph(request: Request) -> CompiledStateGraph:
@@ -213,11 +274,28 @@ def _agent_graph(request: Request) -> CompiledStateGraph:
     if graph is None:
         model = request.app.state.agent_model
         if model is None:
-            model = OpenAICompatibleModel.from_env()
+            gateway_url = os.getenv("SERVICEFLOW_GATEWAY_URL")
+            if gateway_url:
+                model = OpenAICompatibleModel.for_gateway(
+                    base_url=gateway_url,
+                    model=os.getenv("SERVICEFLOW_MODEL", "deepseek-v4-flash"),
+                )
+            else:
+                model = build_model_gateway_from_env(
+                    telemetry=request.app.state.telemetry,
+                    audit_sink=GatewayAuditWriter(
+                        request.app.state.agent_session_factory
+                    ),
+                )
         graph = build_service_graph(
             model=model,
             session_factory=request.app.state.agent_session_factory,
-            checkpointer=InMemorySaver(),
+            checkpointer=SqlAlchemyCheckpointSaver(
+                request.app.state.agent_session_factory
+            ),
+            redis_store=request.app.state.redis_store,
+            policy_retriever=request.app.state.policy_retriever,
+            telemetry=request.app.state.telemetry,
         )
         request.app.state.agent_graph = graph
     return cast(CompiledStateGraph, graph)
@@ -225,6 +303,251 @@ def _agent_graph(request: Request) -> CompiledStateGraph:
 
 def _thread_config(thread_id: str) -> dict[str, dict[str, str]]:
     return {"configurable": {"thread_id": thread_id}}
+
+
+async def _resume_native_confirmation(
+    request: Request,
+    graph: CompiledStateGraph,
+    state: Mapping[str, object],
+    pending: dict[str, object],
+) -> Mapping[str, object]:
+    result = await _call_native_pending(request, pending, confirmed=True, approval_granted=False)
+    if result.get("code") == "approval_required":
+        arguments = pending.get("arguments")
+        order_id = arguments.get("order_id") if isinstance(arguments, dict) else None
+        if not isinstance(order_id, str):
+            raise HTTPException(status_code=422, detail="approval_order_missing")
+        async with request.app.state.agent_session_factory() as session:
+            approval = await CaseService(session).create_approval(
+                order_id, _requested_action_for_tool(str(pending.get("name")))
+            )
+            final = await _read_native_final_state(session, result, pending)
+        approval_id = approval.case.id if approval.case is not None else None
+        if approval_id is None:
+            raise HTTPException(status_code=500, detail="approval_create_failed")
+        final["approval_status"] = "pending"
+        updates = _native_state_updates(
+            state,
+            pending,
+            result,
+            final,
+            status="WAITING_APPROVAL",
+            assistant_message="这项操作需要人工审批，当前只创建申请，尚未执行。",
+            approval_id=approval_id,
+        )
+    else:
+        async with request.app.state.agent_session_factory() as session:
+            final = await _read_native_final_state(session, result, pending)
+        updates = _native_state_updates(
+            state,
+            pending,
+            result,
+            final,
+            status="COMPLETED" if result.get("ok") else "MANUAL_REQUIRED",
+            assistant_message=_native_result_message(result),
+            approval_id=None,
+        )
+    await graph.aupdate_state(_thread_config(str(state["thread_id"])), updates)
+    return {**state, **updates}
+
+
+async def _resume_native_approval(
+    request: Request,
+    graph: CompiledStateGraph,
+    state: Mapping[str, object],
+    approved: bool,
+    *,
+    subject_user_id: str,
+) -> Mapping[str, object]:
+    approval_id = state.get("approval_id")
+    if not isinstance(approval_id, str):
+        raise HTTPException(status_code=404, detail="approval_not_found")
+    pending = state.get("pending_tool_call")
+    if not isinstance(pending, dict):
+        raise HTTPException(status_code=422, detail="pending_tool_invalid")
+    _validate_pending_binding(pending, user_id=subject_user_id, tenant_id="default")
+    arguments = pending.get("arguments")
+    order_id = arguments.get("order_id") if isinstance(arguments, dict) else None
+    if not isinstance(order_id, str):
+        raise HTTPException(status_code=422, detail="approval_order_missing")
+    async with request.app.state.agent_session_factory() as session:
+        result = await ApprovalService(session, tenant_id="default").decide(
+            approval_id=approval_id,
+            approved=approved,
+            subject_user_id=subject_user_id,
+            actor=Principal("serviceflow-demo-approver", "default", ("approver",)),
+            expected_order_id=order_id,
+            expected_action=_requested_action_for_tool(str(pending.get("name"))),
+            session_id=str(state.get("session_id", state.get("thread_id", ""))) or None,
+            trace_id=_optional_text(state.get("run_id")),
+        )
+        final: dict[str, object] = {}
+        if result.order is not None:
+            final["order_status"] = result.order.status.value
+        approval = await CaseService(session).get_case_status(approval_id)
+        if approval is not None and approval.case is not None:
+            final["approval_status"] = getattr(
+                approval.case.status, "value", approval.case.status
+            )
+        if result.case is not None and result.case.id != approval_id:
+            result_status = getattr(result.case.status, "value", result.case.status)
+            if isinstance(result.case, Refund):
+                final["refund_status"] = result_status
+            elif isinstance(result.case, Ticket):
+                final["ticket_status"] = result_status
+    event = {
+        "tool": "decide_approval",
+        "ok": result.ok,
+        "code": result.code,
+        "case_id": approval_id,
+    }
+    updates = {
+        "tool_events": [*state.get("tool_events", []), event],
+        "final_business_state": final,
+        "agent_status": "COMPLETED" if result.ok else "MANUAL_REQUIRED",
+        "assistant_message": (
+            "退款已审批通过并完成."
+            if approved and result.ok
+            else "退款审批未通过。"
+            if not approved and result.ok
+            else "审批处理失败，请转人工继续。"
+        ),
+        "pending_tool_call": None,
+        "pending_code": None,
+    }
+    await graph.aupdate_state(_thread_config(str(state["thread_id"])), updates)
+    return {**state, **updates}
+
+
+async def _call_native_pending(
+    request: Request,
+    pending: dict[str, object],
+    *,
+    confirmed: bool,
+    approval_granted: bool,
+) -> dict[str, object]:
+    call_id = pending.get("call_id")
+    name = pending.get("name")
+    arguments = pending.get("arguments")
+    if not isinstance(call_id, str) or not isinstance(name, str) or not isinstance(arguments, dict):
+        raise HTTPException(status_code=422, detail="pending_tool_invalid")
+    context = {
+        "user_id": await _conversation_user(
+            request, str(request.path_params["thread_id"])
+        ),
+        "tenant_id": "default",
+        "confirmed": confirmed,
+        "approval_granted": approval_granted,
+        "session_id": str(request.path_params["thread_id"]),
+    }
+    if os.getenv("SERVICEFLOW_MCP_TRANSPORT", "in_process") == "stdio":
+        client = StdioMCPClient((sys.executable, "-m", "serviceflow.mcp.stdio_server"))
+        try:
+            return await MCPHost(client).call_tool(
+                call_id=call_id, name=name, arguments=arguments, context=context
+            )
+        finally:
+            await client.close()
+    async with request.app.state.agent_session_factory() as session:
+        host = MCPHost(
+            MCPClient(
+                MCPServer(
+                    ToolExecutor(
+                        session,
+                        policy_retriever=request.app.state.policy_retriever,
+                        tenant_id="default",
+                    )
+                )
+            )
+        )
+        return await host.call_tool(
+            call_id=call_id, name=name, arguments=arguments, context=context
+        )
+
+
+async def _read_native_final_state(
+    session: AsyncSession,
+    result: Mapping[str, object],
+    pending: Mapping[str, object],
+) -> dict[str, object]:
+    final: dict[str, object] = {}
+    arguments = pending.get("arguments")
+    order_id = arguments.get("order_id") if isinstance(arguments, dict) else None
+    if isinstance(order_id, str):
+        order = await CaseService(session).get_order(order_id)
+        if order is not None:
+            final["order_status"] = order.status.value
+    data = result.get("data")
+    case_id = data.get("case_id") if isinstance(data, dict) else None
+    if isinstance(case_id, str):
+        case = await CaseService(session).get_case_status(case_id)
+        if case is not None and case.case is not None:
+            final["case_status"] = getattr(case.case.status, "value", case.case.status)
+    return final
+
+
+def _native_state_updates(
+    state: Mapping[str, object],
+    pending: Mapping[str, object],
+    result: Mapping[str, object],
+    final: dict[str, object],
+    *,
+    status: str,
+    assistant_message: str,
+    approval_id: str | None,
+) -> dict[str, object]:
+    data = result.get("data")
+    case_id = data.get("case_id") if isinstance(data, dict) else None
+    event = {
+        "tool": pending["name"],
+        "ok": result.get("ok", False),
+        "code": result.get("code", "unknown"),
+        "case_id": case_id if isinstance(case_id, str) else None,
+    }
+    return {
+        "tool_events": [*state.get("tool_events", []), event],
+        "final_business_state": final,
+        "agent_status": status,
+        "assistant_message": assistant_message,
+        "approval_id": approval_id,
+        "pending_tool_call": dict(pending) if approval_id else None,
+        "pending_code": result.get("code") if approval_id else None,
+    }
+
+
+def _native_result_message(result: Mapping[str, object]) -> str:
+    if result.get("ok"):
+        return "已完成这项售后操作，最终状态已从业务数据库回读。"
+    return "工具未能完成这项操作，请转人工继续。"
+
+
+def _validate_pending_binding(
+    pending: Mapping[str, object],
+    *,
+    user_id: str,
+    tenant_id: str,
+) -> None:
+    arguments = pending.get("arguments")
+    if not isinstance(arguments, dict):
+        raise HTTPException(status_code=422, detail="pending_tool_invalid")
+    canonical = json.dumps(arguments, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    if (
+        pending.get("bound_user_id") != user_id
+        or pending.get("bound_tenant_id") != tenant_id
+        or pending.get("argument_digest") != sha256(canonical.encode("utf-8")).hexdigest()
+    ):
+        raise HTTPException(status_code=409, detail="pending_binding_mismatch")
+    expires_at = pending.get("expires_at")
+    if not isinstance(expires_at, str) or datetime.fromisoformat(expires_at) <= datetime.now(UTC):
+        raise HTTPException(status_code=409, detail="pending_confirmation_expired")
+
+
+def _requested_action_for_tool(tool_name: str) -> RequestedAction:
+    if tool_name == "request_refund":
+        return RequestedAction.REFUND
+    if tool_name == "create_compensation_request":
+        return RequestedAction.COMPENSATION
+    raise HTTPException(status_code=422, detail="approval_action_invalid")
 
 
 def _conversation_response(
@@ -260,6 +583,7 @@ def _conversation_response(
         model=_optional_text(state.get("model_name")),
         prompt_version=_optional_text(state.get("prompt_version")),
         token_usage=TokenUsageResponse.model_validate(token_usage),
+        agent_status=_optional_text(state.get("agent_status")),
     )
 
 

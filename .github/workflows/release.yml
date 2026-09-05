@@ -1,0 +1,32 @@
+name: ServiceFlow container release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish immutable image tag
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+      - name: Publish release metadata
+        run: |
+          echo "### Container release" >> "$GITHUB_STEP_SUMMARY"
+          echo "ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"

@@ -52,7 +52,7 @@ flowchart LR
 - LangGraph 单 Agent 工作流；
 - SQLAlchemy 2、MySQL 8.4，SQLite 用于快速隔离测试；
 - 原生 HTML、CSS、JavaScript 前端；
-- Docker Compose 编排 FastAPI 和 MySQL；
+- Docker Compose 编排 API、双 LLM Gateway、Worker、MySQL、Redis、Qdrant、OTel Collector、Jaeger、Prometheus 和 Grafana；
 - pytest、Ruff 和固定 JSONL 案例评测。
 
 ## 快速启动
@@ -77,6 +77,16 @@ docker compose up -d
 Invoke-RestMethod http://127.0.0.1:8009/api/v1/health
 Invoke-RestMethod -Method Post http://127.0.0.1:8009/api/v1/demo/reset
 ```
+
+第十步本地交付还提供 Linux/WSL2 入口：
+
+```bash
+./ops/scripts/deploy.sh
+./ops/scripts/healthcheck.sh http://127.0.0.1:8009/api/v1/health 120
+```
+
+启动后可访问 Jaeger <http://127.0.0.1:16686>、Prometheus <http://127.0.0.1:9090> 和 Grafana
+<http://127.0.0.1:3000>。这些是本地演示组件，不是生产观测后端。
 
 ### 3. 启动前端
 
@@ -112,10 +122,11 @@ docker compose down
 
 ```powershell
 Set-Location backend
-uv run pytest -q
+uv run python -m pytest -q --basetemp=../work/pytest-readme
 uv run ruff check .
-uv run ruff format --check .
 ```
+
+`ruff format` 不作为当前门禁。V1 已按 `v1.0.0` / `v1.0.1` 冻结，格式器版本差异会改变冻结文件；代码检查以 `ruff check` 为准。
 
 异步全链路压力测试使用核心 40 案和复杂中文 60 案，共 100 个案例。它使用确定性的
 异步回放模型，不消耗外部模型额度；100 个逻辑用户共享同一个 FastAPI、LangGraph、
@@ -202,7 +213,9 @@ ServiceFlow/
 ├─ frontend/              # 原生浏览器前端
 ├─ tests/eval_cases/      # 冻结的模拟业务案例
 ├─ docs/public/           # 可公开的架构和开发说明
-├─ compose.yaml           # FastAPI + MySQL
+├─ ops/                   # Collector、Prometheus、Grafana 和 Linux 运维脚本
+├─ deploy/k8s/            # kind/Minikube 本地 Kubernetes manifest
+├─ compose.yaml           # 2.0 本地服务编排
 └─ LICENSE                # MIT License
 ```
 
@@ -213,6 +226,9 @@ ServiceFlow/
 - [公开架构说明](docs/public/ARCHITECTURE.md)
 - [本地开发与运行](docs/public/DEVELOPMENT.md)
 - [评测说明](docs/public/EVALUATION.md)
+- [部署说明](docs/public/DEPLOYMENT.md)
+- [运维 Runbook](docs/public/OPERATIONS.md)
+- [作品集与面试讲法](docs/public/PORTFOLIO.md)
 
 ## License
 

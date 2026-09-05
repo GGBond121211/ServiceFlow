@@ -1,0 +1,18 @@
+{
+  "version": "step9-policy-score-scope-v1",
+  "relationship": "separate_namespaces",
+  "business_policy": {
+    "source": "backend/src/serviceflow/domain/policies.py",
+    "id_prefix": "POL-",
+    "metric": "business_policy_accuracy",
+    "score_against": "v2.expected.policy_id"
+  },
+  "rag_evidence": {
+    "source": "experiments/policy_documents/",
+    "id_prefixes": ["CN-", "SF-"],
+    "metric": "policy_evidence_recall",
+    "score_against": "step4_retrieval_queries_v2.expected_policy_ids"
+  },
+  "cross_namespace_mapping": null,
+  "rule": "Never infer a POL-* to CN-*/SF-* mapping from string similarity; report the two metric chains separately."
+}

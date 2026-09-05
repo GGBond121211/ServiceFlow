@@ -1,0 +1,50 @@
+{
+  "result_type": "step10_deployment_smoke",
+  "created_at": "2026-09-05",
+  "status": "compose_passed_k8s_static_only",
+  "compose": {
+    "services": 12,
+    "all_services_healthy": true,
+    "api_health": "200 {\"status\":\"ok\"}",
+    "gateway_proxy_health": "200",
+    "demo_reset": "users=3 orders=12",
+    "seeded_order_read": "ORDER-001 status=paid total_amount=199.00",
+    "prometheus_ready": true,
+    "prometheus_targets": {
+      "serviceflow-api": "up",
+      "serviceflow-gateway": ["gateway-a:8010 up", "gateway-b:8010 up"],
+      "serviceflow-worker": "up"
+    },
+    "grafana_dashboard_uid": "serviceflow-overview",
+    "jaeger_services": ["serviceflow-api", "serviceflow-gateway", "serviceflow-worker"],
+    "jaeger_api_trace_query": "serviceflow-api returned traces",
+    "worker_smoke": {
+      "message_id": "OUT-F95B36506250",
+      "status": "sent",
+      "attempt": 1,
+      "jaeger_service": "serviceflow-worker",
+      "prometheus_worker_up": "1"
+    },
+    "new_otlp_export_errors_after_startup_fix": 0
+  },
+  "fault_injection": {
+    "stopped": "gateway-a",
+    "proxy_response_while_stopped": "gateway-b healthy",
+    "restored": "gateway-a healthy via docker compose up -d --wait gateway-a"
+  },
+  "kubernetes": {
+    "kustomize_render": "passed",
+    "runtime": "not_run",
+    "reason": "kubectl is installed; kind and minikube are unavailable on this machine"
+  },
+  "verification": {
+    "deployment_smoke_tests": "2 passed",
+    "otel_gateway_tests": "5 passed",
+    "ruff": "passed",
+    "compose_config": "passed",
+    "git_diff_check": "passed",
+    "full_regression_repeated": false,
+    "real_model_calls": 0
+  },
+  "postmortem": "experiments/decision_records/step10_gateway_failover_postmortem.md"
+}

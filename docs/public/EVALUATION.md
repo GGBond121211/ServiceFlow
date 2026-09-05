@@ -34,6 +34,69 @@
 | Clarification Rate | 信息不足时是否先追问，并在补充后继续完成 |
 | Latency / Token | 本地运行耗时和模型用量，用于工程观察 |
 
+## V1 冻结基线
+
+以下是 V1 的**唯一权威基线**，2026-09-02 冻结，作为 2.0 全部改动的固定对照。
+
+**可复现坐标**
+
+| 项 | 值 |
+| --- | --- |
+| 提交版本 | `1e4f429` |
+| 发布标签 | `v1.0.1`（`c7d61fd`） |
+| 模型 | `deepseek-v4-flash` |
+| Prompt 版本 | `service_agent_v1` |
+| 思考模式 | `SERVICEFLOW_THINKING_MODE=enabled` / `REASONING_EFFORT=high` |
+| 运行时间 | 2026-08-11T14:06:37Z |
+| 案例集 | `serviceflow_v1.jsonl`（40 条）+ `serviceflow_v1_complex_60.jsonl`（60 条）= 100 条 |
+| 完成情况 | 100 / 100 |
+
+**指标**
+
+| 指标 | 结果 |
+| --- | ---: |
+| Outcome Accuracy | 95.00% |
+| Final State Accuracy | 98.00% |
+| Policy Accuracy | 95.00% |
+| Tool Accuracy | 98.00% |
+| Clarification Rate | 91.67% |
+| 平均单案耗时 | 5640.25 ms |
+| Token | 输入 41791 / 输出 62639 |
+
+演示服务在没有本地 `outputs/evaluation/` 报告时，会使用镜像内的公开基线摘要；本地生成的报告存在时优先使用本地结果。
+
+**按难度分区**
+
+| 分区 | 案例数 | 任务结果 | 最终状态 | 政策 | 工具 | 澄清 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 核心 40 案 | 40 | 97.50% | 97.50% | 97.50% | 97.50% | 100.00% |
+| 复杂中文 60 案 | 60 | 93.33% | 98.33% | 93.33% | 98.33% | 88.89% |
+
+**保留的 5 个失败案例**（不删除、不修改期望值）
+
+| 案例 ID | 失败原因 |
+| --- | --- |
+| `refund_high_rejected_001` | 把"退掉"解析为 `cancel`，路由到 `POL-TICKET-01` |
+| `blend_query_expired_refund_001` | 把超期退款请求解析为纯 `query`，未创建应有工单 |
+| `correct_final_exchange_001` | 意图识别为 `exchange` 正确，政策路由错到 `POL-TICKET-01` |
+| `multi_exchange_order_001` | 同上，且多轮澄清未完成 |
+| `multi_refund_to_exchange_001` | 同上，且多轮澄清未完成 |
+
+后三例是同一种失败模式：**换货意图识别正确、政策路由错误，但两条路径都产出工单，`ticket_open` 终态碰巧一致**。这说明最终状态指标不能取代政策和工具指标。
+
+**复现命令**
+
+```powershell
+Set-Location backend
+uv run serviceflow eval `
+  --cases ..\tests\eval_cases\serviceflow_v1.jsonl ..\tests\eval_cases\serviceflow_v1_complex_60.jsonl `
+  --output ..\outputs\evaluation
+```
+
+**边界声明**：以上数字来自**自建模拟数据**上的**本地单次运行**，使用真实模型 API。它不是生产 SLA、不代表线上流量表现、也不是人工语义评分。原始报告与逐案结果在本地 `outputs/evaluation/` 生成（不入库），可用上面的命令复现。更完整的能力与限制说明见 [`BOUNDARIES.md`](BOUNDARIES.md)。
+
+> 同日更早还有一次 40 案单独运行（Clarification 83.33%、平均 3729.63 ms、失败 2 例）。那是**历史对照**，案例集不同，两套数字不可混用。
+
 ## 软件测试与真实模型评测
 
 软件测试使用 Fake Model 和 SQLite，保护领域规则、仓储、API、工具和图路由；真实模型评测需要本机 `.env` 中存在模型配置。两者目的不同：前者验证代码行为，后者观察自然语言理解和多轮状态合并效果。
@@ -42,7 +105,7 @@
 
 ```powershell
 Set-Location backend
-uv run pytest -q
+uv run python -m pytest -q --basetemp=../work/pytest-public-evaluation
 uv run serviceflow eval `
   --cases ..\tests\eval_cases\serviceflow_v1.jsonl ..\tests\eval_cases\serviceflow_v1_complex_60.jsonl `
   --output ..\outputs\evaluation `
@@ -92,6 +155,20 @@ uv run python -m serviceflow.evaluation.real_stress `
 该命令会真实消耗模型额度。测试结束后会删除本轮创建的临时业务记录，但保留原有演示
 数据。报告额外区分 `business_mismatch`、HTTP 错误、限流、超时和传输错误，避免把
 “模型理解错了”和“服务根本没响应”混成一个失败数字。
+
+## 2.0 Step 9 baseline 边界
+
+2.0 Step 9 已完成工程 baseline 收口，但没有把参考默认值写成质量最优结论：
+
+- V2 当前为 132 条，Policy RAG 为 103 条文档和 28 条查询；holdout 16 条保持锁定；
+- BM25 `1.2/0.75`、RRF `60`、Qdrant `M=16`、政策条款边界、rerank `10→5` 和 Tool Loop `5/12`
+  记录在 `experiments/configs/step9_baseline_profile.yaml`；
+- `reference-only`、`measured-smoke-only` 和 `untested` 分开标记；
+- dev/regression 拆分、完整 V2 逐案质量 Runner、FPR 扩展、模型/参数 A/B、Policy 语料扩充和大规模
+  并发实验延期到 2.1+。
+
+因此，本项目不会声称“V2 总体准确率已证明”“某模型客观最优”“总体 FPR ≤2%”或“生产可靠性已验证”。
+普通 CI 使用 Fake/确定性测试；真实模型评测必须显式触发并单独报告模型、数据集、Token、延迟和成本。
 
 数据库改造需要用独立的 SQL 基准量化。下面的实验仍连接真实 MySQL，但不调用模型，
 这样可以把联合索引和 `LIMIT 1` 的收益从模型网络耗时中隔离出来：

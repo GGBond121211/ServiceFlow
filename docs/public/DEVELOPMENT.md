@@ -61,10 +61,11 @@ python -m http.server 5173 --bind 127.0.0.1 --directory frontend
 
 ```powershell
 Set-Location backend
-uv run pytest -q
+uv run python -m pytest -q --basetemp=../work/pytest-public-development
 uv run ruff check .
-uv run ruff format --check .
 ```
+
+V1 冻结文件不运行 `ruff format`；当前代码门禁是 `ruff check`。
 
 测试代码按 `unit`、`integration`、`api`、`agent` 和 `evals` 分组。测试默认使用 SQLite 临时数据库和 Fake Model，避免把软件测试绑定到网络或真实模型。
 

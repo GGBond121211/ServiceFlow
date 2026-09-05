@@ -1,0 +1,2095 @@
+{
+  "experiment": "step4-policy-retrieval-matrix",
+  "executed_at": "2026-09-04",
+  "dataset": {
+    "policy_documents": 11,
+    "queries": 9
+  },
+  "embedding": "HashEmbedding-128-test-adapter",
+  "arms": [
+    {
+      "config": {
+        "arm": "exact",
+        "top_k": 5,
+        "rrf_weight": 0.5
+      },
+      "metrics": {
+        "recall_at_k": 0.8611,
+        "mrr": 0.8889,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 0.375,
+        "p95_ms": 2.914,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-QUALITY-001",
+            "CN-7DAY-003",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.913500000431668
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.3875999973388389
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-001",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-7DAY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.37480000173673034
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-004",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.394099999743048
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.4977999997208826
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.020899999071843922
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.14630000077886507
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-7DAY-002",
+            "CN-7DAY-006",
+            "CN-QUALITY-003",
+            "CN-7DAY-001",
+            "CN-7DAY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.371300004189834
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.35709999792743474
+        }
+      ]
+    },
+    {
+      "config": {
+        "arm": "pure_vector",
+        "top_k": 5,
+        "rrf_weight": 0.5
+      },
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 2.727,
+        "p95_ms": 4.037,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-QUALITY-005",
+            "CN-7DAY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 3.697100000863429
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-005",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 4.037200000311714
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-003",
+            "CN-7DAY-006"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 3.838500000711065
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.561900000728201
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-QUALITY-005",
+            "CN-QUALITY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.8429999981890433
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.08929999603424221
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.0837000008905306
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-001",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 3.465200003120117
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.7273000014247373
+        }
+      ]
+    },
+    {
+      "config": {
+        "arm": "bm25_only",
+        "top_k": 5,
+        "rrf_weight": 0.5
+      },
+      "metrics": {
+        "recall_at_k": 0.9167,
+        "mrr": 0.8333,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 0.495,
+        "p95_ms": 1.613,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-005",
+            "CN-QUALITY-002",
+            "CN-7DAY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.6133000026457012
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.6816000022809021
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-001",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.5694999999832362
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-004",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.4952000017510727
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-003",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.5638999937218614
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.02040000254055485
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.26980000257026404
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-7DAY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-7DAY-001",
+            "CN-QUALITY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.47819999599596485
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.44099999649915844
+        }
+      ]
+    },
+    {
+      "config": {
+        "arm": "hybrid",
+        "top_k": 5,
+        "rrf_weight": 0.3
+      },
+      "metrics": {
+        "recall_at_k": 0.8333,
+        "mrr": 0.8333,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 2.342,
+        "p95_ms": 2.706,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-QUALITY-002",
+            "CN-7DAY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.366799999435898
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.541399997426197
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.705500002775807
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-004",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.54760000098031
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-QUALITY-003",
+            "CN-7DAY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.3424000028171577
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.059799996961373836
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.8209000006900169
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-7DAY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-7DAY-001",
+            "CN-QUALITY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.203200005169492
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-002",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.14350000169361
+        }
+      ]
+    },
+    {
+      "config": {
+        "arm": "hybrid",
+        "top_k": 5,
+        "rrf_weight": 0.5
+      },
+      "metrics": {
+        "recall_at_k": 0.6944,
+        "mrr": 0.8333,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 2.296,
+        "p95_ms": 2.599,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-QUALITY-002",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.59869999717921
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.4818000019877218
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-001",
+            "CN-7DAY-006"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.325699999346398
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.3280000023078173
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-005",
+            "CN-7DAY-001",
+            "CN-7DAY-003",
+            "CN-QUALITY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.2963000010349788
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.06209999992279336
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.8159999997587875
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-002",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-006"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.1657999968738295
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-002",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.1926000044913962
+        }
+      ]
+    },
+    {
+      "config": {
+        "arm": "hybrid",
+        "top_k": 5,
+        "rrf_weight": 0.7
+      },
+      "metrics": {
+        "recall_at_k": 0.6944,
+        "mrr": 0.8333,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 2.293,
+        "p95_ms": 2.829,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-QUALITY-005",
+            "CN-7DAY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.8286000015214086
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.435199996398296
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-003",
+            "CN-7DAY-006"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.3313999990932643
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.2804000036558136
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-005",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-QUALITY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.2933000000193715
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.0596999961999245
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.840000000607688
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-002",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-006"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.453000000969041
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-002",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.2316000031423755
+        }
+      ]
+    },
+    {
+      "config": {
+        "arm": "vector_rerank_adapter",
+        "top_k": 5,
+        "rrf_weight": 0.5
+      },
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.9167,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 1.972,
+        "p95_ms": 2.201,
+        "query_count": 9
+      },
+      "cases": [
+        {
+          "query_id": "active_return_window_cn",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-QUALITY-005",
+            "CN-7DAY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.1367000008467585
+        },
+        {
+          "query_id": "return_exception_cn",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.2005999999237247
+        },
+        {
+          "query_id": "quality_repair_exchange_cn",
+          "policy_ids": [
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-7DAY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.9943999941460788
+        },
+        {
+          "query_id": "quality_shipping_cn",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-003"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.953999999386724
+        },
+        {
+          "query_id": "three_guarantees_no_universal_day_count",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-001",
+            "CN-QUALITY-003",
+            "CN-7DAY-003",
+            "CN-7DAY-004"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 2.0255999988876283
+        },
+        {
+          "query_id": "wrong_region_us",
+          "policy_ids": [],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.056700002460274845
+        },
+        {
+          "query_id": "before_policy_effective_date",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 0.8139999990817159
+        },
+        {
+          "query_id": "mixed_language_policy_question",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-002",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.971500001673121
+        },
+        {
+          "query_id": "policy_identifier_gap_probe",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-002"
+          ],
+          "known_policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-004",
+            "CN-7DAY-005",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.9288000039523467
+        }
+      ]
+    }
+  ],
+  "top_k_sweep": [
+    {
+      "recall_at_k": 0.6944,
+      "mrr": 0.8333,
+      "empty_recall_rate": 0.3333,
+      "citation_validity_rate": 1,
+      "p50_ms": 2.245,
+      "p95_ms": 3.088,
+      "query_count": 9,
+      "top_k": 3
+    },
+    {
+      "recall_at_k": 0.6944,
+      "mrr": 0.8333,
+      "empty_recall_rate": 0.3333,
+      "citation_validity_rate": 1,
+      "p50_ms": 2.427,
+      "p95_ms": 3.189,
+      "query_count": 9,
+      "top_k": 5
+    },
+    {
+      "recall_at_k": 1.0,
+      "mrr": 0.8333,
+      "empty_recall_rate": 0.3333,
+      "citation_validity_rate": 1,
+      "p50_ms": 2.272,
+      "p95_ms": 2.578,
+      "query_count": 9,
+      "top_k": 8
+    }
+  ],
+  "chunk_sweep": [
+    {
+      "chunk_strategy": "token_256",
+      "max_document_terms": 122,
+      "all_documents_fit_one_chunk": true
+    },
+    {
+      "chunk_strategy": "token_512",
+      "max_document_terms": 122,
+      "all_documents_fit_one_chunk": true
+    },
+    {
+      "chunk_strategy": "token_1024",
+      "max_document_terms": 122,
+      "all_documents_fit_one_chunk": true
+    }
+  ],
+  "hnsw_matrix": [
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 64,
+        "ef_search": 32
+      },
+      "build_ms": 377.901,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 12.035,
+        "p95_ms": 20.785,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 64,
+        "ef_search": 64
+      },
+      "build_ms": 330.585,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.198,
+        "p95_ms": 11.773,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 64,
+        "ef_search": 128
+      },
+      "build_ms": 345.181,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.576,
+        "p95_ms": 9.614,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 100,
+        "ef_search": 32
+      },
+      "build_ms": 353.31,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.741,
+        "p95_ms": 10.991,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 100,
+        "ef_search": 64
+      },
+      "build_ms": 298.566,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 6.846,
+        "p95_ms": 7.922,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 100,
+        "ef_search": 128
+      },
+      "build_ms": 374.736,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 7.735,
+        "p95_ms": 8.932,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 200,
+        "ef_search": 32
+      },
+      "build_ms": 356.83,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 6.993,
+        "p95_ms": 11.244,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 200,
+        "ef_search": 64
+      },
+      "build_ms": 322.301,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.402,
+        "p95_ms": 9.529,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 8,
+        "ef_construction": 200,
+        "ef_search": 128
+      },
+      "build_ms": 422.121,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.491,
+        "p95_ms": 15.339,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 64,
+        "ef_search": 32
+      },
+      "build_ms": 362.829,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.674,
+        "p95_ms": 11.469,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 64,
+        "ef_search": 64
+      },
+      "build_ms": 417.732,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.881,
+        "p95_ms": 12.319,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 64,
+        "ef_search": 128
+      },
+      "build_ms": 361.744,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 10.71,
+        "p95_ms": 13.96,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 100,
+        "ef_search": 32
+      },
+      "build_ms": 461.85,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 10.948,
+        "p95_ms": 13.052,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 100,
+        "ef_search": 64
+      },
+      "build_ms": 425.941,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.872,
+        "p95_ms": 17.758,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 100,
+        "ef_search": 128
+      },
+      "build_ms": 407.928,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.848,
+        "p95_ms": 11.594,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 200,
+        "ef_search": 32
+      },
+      "build_ms": 414.923,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.021,
+        "p95_ms": 10.396,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 200,
+        "ef_search": 64
+      },
+      "build_ms": 407.19,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.606,
+        "p95_ms": 13.257,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 16,
+        "ef_construction": 200,
+        "ef_search": 128
+      },
+      "build_ms": 390.486,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 7.936,
+        "p95_ms": 9.137,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 64,
+        "ef_search": 32
+      },
+      "build_ms": 427.529,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 15.508,
+        "p95_ms": 17.695,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 64,
+        "ef_search": 64
+      },
+      "build_ms": 636.377,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 11.258,
+        "p95_ms": 15.844,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 64,
+        "ef_search": 128
+      },
+      "build_ms": 503.35,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.044,
+        "p95_ms": 10.105,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 100,
+        "ef_search": 32
+      },
+      "build_ms": 309.463,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 7.013,
+        "p95_ms": 8.52,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 100,
+        "ef_search": 64
+      },
+      "build_ms": 324.427,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 9.924,
+        "p95_ms": 19.696,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 100,
+        "ef_search": 128
+      },
+      "build_ms": 328.654,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.071,
+        "p95_ms": 9.974,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 200,
+        "ef_search": 32
+      },
+      "build_ms": 336.442,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 7.904,
+        "p95_ms": 9.828,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 200,
+        "ef_search": 64
+      },
+      "build_ms": 416.936,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 7.21,
+        "p95_ms": 12.889,
+        "query_count": 9
+      }
+    },
+    {
+      "config": {
+        "m": 32,
+        "ef_construction": 200,
+        "ef_search": 128
+      },
+      "build_ms": 412.958,
+      "metrics": {
+        "recall_at_k": 0.7778,
+        "mrr": 0.7917,
+        "empty_recall_rate": 0.3333,
+        "citation_validity_rate": 1,
+        "p50_ms": 8.199,
+        "p95_ms": 12.473,
+        "query_count": 9
+      }
+    }
+  ],
+  "boundary": "small local corpus; results are measured evidence, not production model selection"
+}

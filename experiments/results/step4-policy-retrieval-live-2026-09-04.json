@@ -1,0 +1,1661 @@
+{
+  "methodology": {
+    "dataset": "serviceflow_policy_v2_expanded.jsonl",
+    "query_set": "step4_retrieval_queries_v2.jsonl",
+    "document_count": 33,
+    "query_count": 28,
+    "embedding_model": "qwen3.7-text-embedding",
+    "embedding_dimension": 1024,
+    "live_api": true,
+    "note": "指标只适用于本次语料、查询划分和配置；holdout 不用于调参。"
+  },
+  "arms": {
+    "exact": {
+      "config": {
+        "live_embedding": true,
+        "split": null,
+        "max_inputs": 64,
+        "top_k": 5,
+        "candidate_k": 10,
+        "output": "..\\experiments\\results\\step4-policy-retrieval-live-2026-09-04.json",
+        "arms": [
+          "exact",
+          "bm25",
+          "semantic",
+          "hybrid",
+          "hybrid_rerank"
+        ]
+      },
+      "metrics": {
+        "query_count": 28,
+        "recall_at_k": 0.859,
+        "mrr": 0.9038,
+        "empty_result_rate": 0.5,
+        "must_not_precision": 0.9286,
+        "p50_ms": 3.354,
+        "p95_ms": 5.725
+      },
+      "cases": [
+        {
+          "query_id": "v2_return_window_plain",
+          "policy_ids": [
+            "CN-7DAY-010",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-005"
+          ],
+          "latency_ms": 10.514100002183113
+        },
+        {
+          "query_id": "v2_return_window_paraphrase",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-009",
+            "CN-QUALITY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-010"
+          ],
+          "latency_ms": 5.724900001951028
+        },
+        {
+          "query_id": "v2_return_exception_custom",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-007"
+          ],
+          "latency_ms": 4.909600000246428
+        },
+        {
+          "query_id": "v2_return_exception_digital",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-009",
+            "CN-7DAY-007"
+          ],
+          "latency_ms": 2.492699997674208
+        },
+        {
+          "query_id": "v2_return_accessories",
+          "policy_ids": [
+            "CN-7DAY-004",
+            "CN-7DAY-010",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 4.109699999389704
+        },
+        {
+          "query_id": "v2_refund_payment",
+          "policy_ids": [
+            "CN-7DAY-005",
+            "CN-7DAY-011",
+            "CN-7DAY-010",
+            "CN-7DAY-002",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 3.3536000046296977
+        },
+        {
+          "query_id": "v2_return_freight",
+          "policy_ids": [
+            "CN-7DAY-006",
+            "CN-QUALITY-003",
+            "CN-7DAY-002",
+            "CN-7DAY-007",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 3.649600002972875
+        },
+        {
+          "query_id": "v2_quality_path",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-7DAY-001",
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-7DAY-005"
+          ],
+          "latency_ms": 4.036699996504467
+        },
+        {
+          "query_id": "v2_quality_freight",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 3.588400002627168
+        },
+        {
+          "query_id": "v2_quality_evidence",
+          "policy_ids": [
+            "CN-QUALITY-009",
+            "CN-QUALITY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-008",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 4.805399999895599
+        },
+        {
+          "query_id": "v2_quality_performance",
+          "policy_ids": [
+            "CN-QUALITY-004",
+            "CN-QUALITY-006",
+            "CN-QUALITY-007",
+            "CN-7DAY-009",
+            "CN-CONSUMER-001"
+          ],
+          "latency_ms": 4.3701999966287985
+        },
+        {
+          "query_id": "v2_quality_label",
+          "policy_ids": [
+            "CN-QUALITY-007",
+            "CN-QUALITY-004",
+            "CN-7DAY-001",
+            "CN-QUALITY-006",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 2.7589000019361265
+        },
+        {
+          "query_id": "v2_three_guarantees",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-7DAY-001",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 5.277299998851959
+        },
+        {
+          "query_id": "v2_missing_category",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-7DAY-003",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 2.8292999995755963
+        },
+        {
+          "query_id": "v2_risk_product",
+          "policy_ids": [
+            "CN-QUALITY-010",
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-QUALITY-012",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 3.7038000009488314
+        },
+        {
+          "query_id": "v2_damage_compensation",
+          "policy_ids": [
+            "CN-QUALITY-011",
+            "CN-7DAY-011",
+            "CN-QUALITY-001",
+            "CN-QUALITY-005",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 4.037600003357511
+        },
+        {
+          "query_id": "v2_consumer_safety",
+          "policy_ids": [
+            "CN-CONSUMER-001",
+            "CN-QUALITY-010",
+            "CN-QUALITY-011",
+            "CN-QUALITY-001",
+            "CN-7DAY-010"
+          ],
+          "latency_ms": 4.513500003668014
+        },
+        {
+          "query_id": "v2_consumer_information",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-REG-002",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 1.556000002892688
+        },
+        {
+          "query_id": "v2_consumer_choice",
+          "policy_ids": [
+            "CN-CONSUMER-003",
+            "CN-QUALITY-002",
+            "CN-QUALITY-005",
+            "CN-7DAY-001",
+            "CN-7DAY-003"
+          ],
+          "latency_ms": 2.2279000040725805
+        },
+        {
+          "query_id": "v2_false_claim",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-CONSUMER-001",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-012",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 2.5239000024157576
+        },
+        {
+          "query_id": "v2_format_clause",
+          "policy_ids": [
+            "CN-CONSUMER-005",
+            "CN-QUALITY-004",
+            "CN-7DAY-003",
+            "CN-7DAY-007",
+            "CN-QUALITY-002"
+          ],
+          "latency_ms": 1.7172000007121824
+        },
+        {
+          "query_id": "v2_ecommerce_promise",
+          "policy_ids": [
+            "CN-REG-001",
+            "CN-7DAY-001",
+            "CN-7DAY-010",
+            "CN-CONSUMER-006",
+            "CN-QUALITY-002"
+          ],
+          "latency_ms": 1.8816000010701828
+        },
+        {
+          "query_id": "v2_ecommerce_records",
+          "policy_ids": [
+            "CN-REG-002",
+            "CN-QUALITY-005",
+            "CN-7DAY-009",
+            "CN-7DAY-011",
+            "CN-CONSUMER-004"
+          ],
+          "latency_ms": 1.4497000011033379
+        },
+        {
+          "query_id": "v2_ecommerce_dispute",
+          "policy_ids": [
+            "CN-REG-003",
+            "CN-7DAY-001",
+            "CN-QUALITY-011",
+            "CN-REG-002",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 2.855200000340119
+        },
+        {
+          "query_id": "v2_wrong_region",
+          "policy_ids": [],
+          "latency_ms": 0.06990000110818073
+        },
+        {
+          "query_id": "v2_before_effective",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-003",
+            "CN-CONSUMER-002",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 1.3829000017722137
+        },
+        {
+          "query_id": "v2_policy_id",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-CONSUMER-004"
+          ],
+          "latency_ms": 2.594999998109415
+        },
+        {
+          "query_id": "v2_mixed_language",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-7DAY-002",
+            "CN-7DAY-004",
+            "CN-7DAY-009"
+          ],
+          "latency_ms": 1.2826000020140782
+        }
+      ]
+    },
+    "bm25": {
+      "config": {
+        "live_embedding": true,
+        "split": null,
+        "max_inputs": 64,
+        "top_k": 5,
+        "candidate_k": 10,
+        "output": "..\\experiments\\results\\step4-policy-retrieval-live-2026-09-04.json",
+        "arms": [
+          "exact",
+          "bm25",
+          "semantic",
+          "hybrid",
+          "hybrid_rerank"
+        ]
+      },
+      "metrics": {
+        "query_count": 28,
+        "recall_at_k": 0.9167,
+        "mrr": 0.8654,
+        "empty_result_rate": 0.5,
+        "must_not_precision": 0.9286,
+        "p50_ms": 5.969,
+        "p95_ms": 12.615
+      },
+      "cases": [
+        {
+          "query_id": "v2_return_window_plain",
+          "policy_ids": [
+            "CN-7DAY-010",
+            "CN-7DAY-002",
+            "CN-7DAY-001",
+            "CN-7DAY-011",
+            "CN-7DAY-005"
+          ],
+          "latency_ms": 12.366700000711717
+        },
+        {
+          "query_id": "v2_return_window_paraphrase",
+          "policy_ids": [
+            "CN-7DAY-010",
+            "CN-7DAY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-009",
+            "CN-QUALITY-012"
+          ],
+          "latency_ms": 13.58299999992596
+        },
+        {
+          "query_id": "v2_return_exception_custom",
+          "policy_ids": [
+            "CN-7DAY-010",
+            "CN-7DAY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 9.779900006833486
+        },
+        {
+          "query_id": "v2_return_exception_digital",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-001",
+            "CN-7DAY-009",
+            "CN-7DAY-011"
+          ],
+          "latency_ms": 6.651600000623148
+        },
+        {
+          "query_id": "v2_return_accessories",
+          "policy_ids": [
+            "CN-7DAY-004",
+            "CN-7DAY-010",
+            "CN-QUALITY-002",
+            "CN-7DAY-001",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 6.1667999980272725
+        },
+        {
+          "query_id": "v2_refund_payment",
+          "policy_ids": [
+            "CN-7DAY-005",
+            "CN-7DAY-011",
+            "CN-7DAY-010",
+            "CN-7DAY-002",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 5.2869000064674765
+        },
+        {
+          "query_id": "v2_return_freight",
+          "policy_ids": [
+            "CN-7DAY-006",
+            "CN-QUALITY-003",
+            "CN-7DAY-008",
+            "CN-7DAY-007",
+            "CN-7DAY-002"
+          ],
+          "latency_ms": 5.424700000730809
+        },
+        {
+          "query_id": "v2_quality_path",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-7DAY-001",
+            "CN-7DAY-005",
+            "CN-7DAY-010",
+            "CN-7DAY-003"
+          ],
+          "latency_ms": 12.248999999428634
+        },
+        {
+          "query_id": "v2_quality_freight",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 5.171800003154203
+        },
+        {
+          "query_id": "v2_quality_evidence",
+          "policy_ids": [
+            "CN-QUALITY-009",
+            "CN-QUALITY-008",
+            "CN-QUALITY-006",
+            "CN-QUALITY-001",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 9.311100002378225
+        },
+        {
+          "query_id": "v2_quality_performance",
+          "policy_ids": [
+            "CN-QUALITY-006",
+            "CN-QUALITY-004",
+            "CN-QUALITY-007",
+            "CN-7DAY-001",
+            "CN-7DAY-010"
+          ],
+          "latency_ms": 5.700299996533431
+        },
+        {
+          "query_id": "v2_quality_label",
+          "policy_ids": [
+            "CN-QUALITY-007",
+            "CN-QUALITY-004",
+            "CN-QUALITY-006",
+            "CN-QUALITY-009",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 5.106900003738701
+        },
+        {
+          "query_id": "v2_three_guarantees",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-7DAY-001",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-007"
+          ],
+          "latency_ms": 12.61510000040289
+        },
+        {
+          "query_id": "v2_missing_category",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-QUALITY-007",
+            "CN-7DAY-005",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 4.826600001251791
+        },
+        {
+          "query_id": "v2_risk_product",
+          "policy_ids": [
+            "CN-QUALITY-010",
+            "CN-QUALITY-012",
+            "CN-REG-002",
+            "CN-QUALITY-008",
+            "CN-REG-003"
+          ],
+          "latency_ms": 8.257499997853301
+        },
+        {
+          "query_id": "v2_damage_compensation",
+          "policy_ids": [
+            "CN-QUALITY-011",
+            "CN-QUALITY-010",
+            "CN-7DAY-011",
+            "CN-QUALITY-001",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 10.287800003425218
+        },
+        {
+          "query_id": "v2_consumer_safety",
+          "policy_ids": [
+            "CN-CONSUMER-001",
+            "CN-QUALITY-010",
+            "CN-QUALITY-011",
+            "CN-QUALITY-001",
+            "CN-CONSUMER-004"
+          ],
+          "latency_ms": 9.480399996391498
+        },
+        {
+          "query_id": "v2_consumer_information",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-QUALITY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-REG-002"
+          ],
+          "latency_ms": 5.0675999955274165
+        },
+        {
+          "query_id": "v2_consumer_choice",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-7DAY-003"
+          ],
+          "latency_ms": 2.6858000055653974
+        },
+        {
+          "query_id": "v2_false_claim",
+          "policy_ids": [
+            "CN-QUALITY-012",
+            "CN-7DAY-003",
+            "CN-CONSUMER-005",
+            "CN-CONSUMER-001",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 5.233600000792649
+        },
+        {
+          "query_id": "v2_format_clause",
+          "policy_ids": [
+            "CN-CONSUMER-005",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-7DAY-007",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 5.969400001049507
+        },
+        {
+          "query_id": "v2_ecommerce_promise",
+          "policy_ids": [
+            "CN-REG-001",
+            "CN-QUALITY-004",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-009",
+            "CN-QUALITY-011"
+          ],
+          "latency_ms": 3.644299998995848
+        },
+        {
+          "query_id": "v2_ecommerce_records",
+          "policy_ids": [
+            "CN-REG-002",
+            "CN-CONSUMER-006",
+            "CN-REG-003",
+            "CN-QUALITY-008",
+            "CN-CONSUMER-004"
+          ],
+          "latency_ms": 4.390299996885005
+        },
+        {
+          "query_id": "v2_ecommerce_dispute",
+          "policy_ids": [
+            "CN-REG-003",
+            "CN-7DAY-001",
+            "CN-7DAY-010",
+            "CN-REG-002",
+            "CN-QUALITY-008"
+          ],
+          "latency_ms": 8.126699998683762
+        },
+        {
+          "query_id": "v2_wrong_region",
+          "policy_ids": [],
+          "latency_ms": 0.022700005501974374
+        },
+        {
+          "query_id": "v2_before_effective",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-CONSUMER-005",
+            "CN-CONSUMER-002",
+            "CN-CONSUMER-001"
+          ],
+          "latency_ms": 1.7965999941225164
+        },
+        {
+          "query_id": "v2_policy_id",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-7DAY-002",
+            "CN-CONSUMER-004",
+            "CN-REG-002",
+            "CN-QUALITY-002"
+          ],
+          "latency_ms": 6.816399996750988
+        },
+        {
+          "query_id": "v2_mixed_language",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-7DAY-002",
+            "CN-QUALITY-002",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 3.120399996987544
+        }
+      ]
+    },
+    "semantic": {
+      "config": {
+        "live_embedding": true,
+        "split": null,
+        "max_inputs": 64,
+        "top_k": 5,
+        "candidate_k": 10,
+        "output": "..\\experiments\\results\\step4-policy-retrieval-live-2026-09-04.json",
+        "arms": [
+          "exact",
+          "bm25",
+          "semantic",
+          "hybrid",
+          "hybrid_rerank"
+        ]
+      },
+      "metrics": {
+        "query_count": 28,
+        "recall_at_k": 0.9487,
+        "mrr": 0.9423,
+        "empty_result_rate": 0.5,
+        "must_not_precision": 0.9286,
+        "p50_ms": 0.006,
+        "p95_ms": 0.016
+      },
+      "cases": [
+        {
+          "query_id": "v2_return_window_plain",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-010",
+            "CN-7DAY-007",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 0.014400000509340316
+        },
+        {
+          "query_id": "v2_return_window_paraphrase",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-003",
+            "CN-7DAY-012",
+            "CN-7DAY-002",
+            "CN-7DAY-010"
+          ],
+          "latency_ms": 0.01630000042496249
+        },
+        {
+          "query_id": "v2_return_exception_custom",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-7DAY-007",
+            "CN-7DAY-006",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 0.006599999323952943
+        },
+        {
+          "query_id": "v2_return_exception_digital",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-7DAY-007",
+            "CN-7DAY-001",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 0.005900001269765198
+        },
+        {
+          "query_id": "v2_return_accessories",
+          "policy_ids": [
+            "CN-7DAY-004",
+            "CN-7DAY-011",
+            "CN-QUALITY-003",
+            "CN-7DAY-009",
+            "CN-7DAY-010"
+          ],
+          "latency_ms": 0.0030000010156072676
+        },
+        {
+          "query_id": "v2_refund_payment",
+          "policy_ids": [
+            "CN-7DAY-005",
+            "CN-7DAY-011",
+            "CN-7DAY-010",
+            "CN-7DAY-004",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 0.0035000048228539526
+        },
+        {
+          "query_id": "v2_return_freight",
+          "policy_ids": [
+            "CN-7DAY-006",
+            "CN-QUALITY-003",
+            "CN-7DAY-007",
+            "CN-7DAY-012",
+            "CN-7DAY-002"
+          ],
+          "latency_ms": 0.005699999746866524
+        },
+        {
+          "query_id": "v2_quality_path",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-QUALITY-001",
+            "CN-QUALITY-003",
+            "CN-7DAY-009"
+          ],
+          "latency_ms": 0.010399999155197293
+        },
+        {
+          "query_id": "v2_quality_freight",
+          "policy_ids": [
+            "CN-7DAY-006",
+            "CN-QUALITY-003",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 0.0031999952625483274
+        },
+        {
+          "query_id": "v2_quality_evidence",
+          "policy_ids": [
+            "CN-QUALITY-009",
+            "CN-QUALITY-006",
+            "CN-QUALITY-011",
+            "CN-QUALITY-004",
+            "CN-QUALITY-008"
+          ],
+          "latency_ms": 0.010799994925037026
+        },
+        {
+          "query_id": "v2_quality_performance",
+          "policy_ids": [
+            "CN-QUALITY-004",
+            "CN-QUALITY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-009",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 0.009400006092619151
+        },
+        {
+          "query_id": "v2_quality_label",
+          "policy_ids": [
+            "CN-QUALITY-007",
+            "CN-QUALITY-010",
+            "CN-QUALITY-004",
+            "CN-QUALITY-009",
+            "CN-QUALITY-011"
+          ],
+          "latency_ms": 0.0035999983083456755
+        },
+        {
+          "query_id": "v2_three_guarantees",
+          "policy_ids": [
+            "CN-QUALITY-012",
+            "CN-QUALITY-005",
+            "CN-7DAY-001",
+            "CN-7DAY-003",
+            "CN-7DAY-009"
+          ],
+          "latency_ms": 0.03060000017285347
+        },
+        {
+          "query_id": "v2_missing_category",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-7DAY-002",
+            "CN-7DAY-007",
+            "CN-7DAY-006"
+          ],
+          "latency_ms": 0.0036999990697950125
+        },
+        {
+          "query_id": "v2_risk_product",
+          "policy_ids": [
+            "CN-QUALITY-010",
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-7DAY-010",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 0.008300004992634058
+        },
+        {
+          "query_id": "v2_damage_compensation",
+          "policy_ids": [
+            "CN-QUALITY-011",
+            "CN-QUALITY-010",
+            "CN-QUALITY-004",
+            "CN-QUALITY-006",
+            "CN-QUALITY-012"
+          ],
+          "latency_ms": 0.007200003892648965
+        },
+        {
+          "query_id": "v2_consumer_safety",
+          "policy_ids": [
+            "CN-CONSUMER-001",
+            "CN-CONSUMER-002",
+            "CN-CONSUMER-003",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-007"
+          ],
+          "latency_ms": 0.008200004231184721
+        },
+        {
+          "query_id": "v2_consumer_information",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-QUALITY-008"
+          ],
+          "latency_ms": 0.004800000169780105
+        },
+        {
+          "query_id": "v2_consumer_choice",
+          "policy_ids": [
+            "CN-CONSUMER-003",
+            "CN-QUALITY-002",
+            "CN-REG-001",
+            "CN-7DAY-007",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 0.0020000006770715117
+        },
+        {
+          "query_id": "v2_false_claim",
+          "policy_ids": [
+            "CN-CONSUMER-004",
+            "CN-QUALITY-009",
+            "CN-REG-001",
+            "CN-CONSUMER-003",
+            "CN-CONSUMER-002"
+          ],
+          "latency_ms": 0.007100003131199628
+        },
+        {
+          "query_id": "v2_format_clause",
+          "policy_ids": [
+            "CN-CONSUMER-005",
+            "CN-7DAY-007",
+            "CN-QUALITY-002",
+            "CN-QUALITY-001",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 0.006300004315562546
+        },
+        {
+          "query_id": "v2_ecommerce_promise",
+          "policy_ids": [
+            "CN-REG-001",
+            "CN-7DAY-007",
+            "CN-REG-002",
+            "CN-CONSUMER-004",
+            "CN-CONSUMER-006"
+          ],
+          "latency_ms": 0.0031000017770566046
+        },
+        {
+          "query_id": "v2_ecommerce_records",
+          "policy_ids": [
+            "CN-REG-002",
+            "CN-REG-003",
+            "CN-CONSUMER-006",
+            "CN-REG-001",
+            "CN-QUALITY-008"
+          ],
+          "latency_ms": 0.005199995939619839
+        },
+        {
+          "query_id": "v2_ecommerce_dispute",
+          "policy_ids": [
+            "CN-REG-003",
+            "CN-REG-002",
+            "CN-CONSUMER-006",
+            "CN-QUALITY-009",
+            "CN-QUALITY-011"
+          ],
+          "latency_ms": 0.007800001185387373
+        },
+        {
+          "query_id": "v2_wrong_region",
+          "policy_ids": [],
+          "latency_ms": 0.0018999999156221747
+        },
+        {
+          "query_id": "v2_before_effective",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005",
+            "CN-CONSUMER-003",
+            "CN-CONSUMER-001"
+          ],
+          "latency_ms": 0.005200003215577453
+        },
+        {
+          "query_id": "v2_policy_id",
+          "policy_ids": [
+            "CN-7DAY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-001",
+            "CN-7DAY-012",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 0.0035999983083456755
+        },
+        {
+          "query_id": "v2_mixed_language",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-009",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 0.0039000005926936865
+        }
+      ]
+    },
+    "hybrid": {
+      "config": {
+        "live_embedding": true,
+        "split": null,
+        "max_inputs": 64,
+        "top_k": 5,
+        "candidate_k": 10,
+        "output": "..\\experiments\\results\\step4-policy-retrieval-live-2026-09-04.json",
+        "arms": [
+          "exact",
+          "bm25",
+          "semantic",
+          "hybrid",
+          "hybrid_rerank"
+        ]
+      },
+      "metrics": {
+        "query_count": 28,
+        "recall_at_k": 0.9551,
+        "mrr": 0.9615,
+        "empty_result_rate": 0.5,
+        "must_not_precision": 0.9286,
+        "p50_ms": 6.359,
+        "p95_ms": 11.937
+      },
+      "cases": [
+        {
+          "query_id": "v2_return_window_plain",
+          "policy_ids": [
+            "CN-7DAY-010",
+            "CN-7DAY-002",
+            "CN-7DAY-001",
+            "CN-7DAY-008",
+            "CN-7DAY-006"
+          ],
+          "latency_ms": 11.93720000446774
+        },
+        {
+          "query_id": "v2_return_window_paraphrase",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-7DAY-010",
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 11.078899995482061
+        },
+        {
+          "query_id": "v2_return_exception_custom",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-006",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 10.291000005963724
+        },
+        {
+          "query_id": "v2_return_exception_digital",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-7DAY-001",
+            "CN-7DAY-007",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 8.978300000308082
+        },
+        {
+          "query_id": "v2_return_accessories",
+          "policy_ids": [
+            "CN-7DAY-004",
+            "CN-7DAY-010",
+            "CN-7DAY-008",
+            "CN-7DAY-006",
+            "CN-QUALITY-002"
+          ],
+          "latency_ms": 4.328900002292357
+        },
+        {
+          "query_id": "v2_refund_payment",
+          "policy_ids": [
+            "CN-7DAY-005",
+            "CN-7DAY-011",
+            "CN-7DAY-010",
+            "CN-7DAY-004",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 4.783199998200871
+        },
+        {
+          "query_id": "v2_return_freight",
+          "policy_ids": [
+            "CN-7DAY-006",
+            "CN-QUALITY-003",
+            "CN-7DAY-007",
+            "CN-7DAY-002",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 8.589899996877648
+        },
+        {
+          "query_id": "v2_quality_path",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-7DAY-009",
+            "CN-QUALITY-001",
+            "CN-7DAY-003"
+          ],
+          "latency_ms": 12.689299997873604
+        },
+        {
+          "query_id": "v2_quality_freight",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-001",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 3.5420999993220903
+        },
+        {
+          "query_id": "v2_quality_evidence",
+          "policy_ids": [
+            "CN-QUALITY-009",
+            "CN-QUALITY-006",
+            "CN-QUALITY-008",
+            "CN-QUALITY-004",
+            "CN-QUALITY-011"
+          ],
+          "latency_ms": 11.50229999620933
+        },
+        {
+          "query_id": "v2_quality_performance",
+          "policy_ids": [
+            "CN-QUALITY-006",
+            "CN-QUALITY-004",
+            "CN-QUALITY-009",
+            "CN-7DAY-009",
+            "CN-CONSUMER-001"
+          ],
+          "latency_ms": 10.473099995579105
+        },
+        {
+          "query_id": "v2_quality_label",
+          "policy_ids": [
+            "CN-QUALITY-007",
+            "CN-QUALITY-004",
+            "CN-QUALITY-009",
+            "CN-QUALITY-006",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 7.525600005465094
+        },
+        {
+          "query_id": "v2_three_guarantees",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-7DAY-001",
+            "CN-QUALITY-001",
+            "CN-7DAY-009"
+          ],
+          "latency_ms": 10.552600004302803
+        },
+        {
+          "query_id": "v2_missing_category",
+          "policy_ids": [
+            "CN-QUALITY-012",
+            "CN-7DAY-003",
+            "CN-7DAY-007",
+            "CN-QUALITY-005",
+            "CN-QUALITY-007"
+          ],
+          "latency_ms": 5.34229999902891
+        },
+        {
+          "query_id": "v2_risk_product",
+          "policy_ids": [
+            "CN-QUALITY-010",
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-QUALITY-012",
+            "CN-REG-002"
+          ],
+          "latency_ms": 10.267199999361765
+        },
+        {
+          "query_id": "v2_damage_compensation",
+          "policy_ids": [
+            "CN-QUALITY-011",
+            "CN-QUALITY-010",
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-7DAY-011"
+          ],
+          "latency_ms": 8.301800000481308
+        },
+        {
+          "query_id": "v2_consumer_safety",
+          "policy_ids": [
+            "CN-CONSUMER-001",
+            "CN-CONSUMER-002",
+            "CN-QUALITY-011",
+            "CN-QUALITY-003",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 4.1658999980427325
+        },
+        {
+          "query_id": "v2_consumer_information",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-CONSUMER-003",
+            "CN-REG-002"
+          ],
+          "latency_ms": 6.358799997542519
+        },
+        {
+          "query_id": "v2_consumer_choice",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-CONSUMER-003",
+            "CN-QUALITY-004",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 5.069999999250285
+        },
+        {
+          "query_id": "v2_false_claim",
+          "policy_ids": [
+            "CN-CONSUMER-004",
+            "CN-QUALITY-009",
+            "CN-CONSUMER-005",
+            "CN-CONSUMER-001",
+            "CN-REG-002"
+          ],
+          "latency_ms": 5.2141999985906295
+        },
+        {
+          "query_id": "v2_format_clause",
+          "policy_ids": [
+            "CN-CONSUMER-005",
+            "CN-QUALITY-002",
+            "CN-7DAY-007",
+            "CN-QUALITY-003",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 4.399999997986015
+        },
+        {
+          "query_id": "v2_ecommerce_promise",
+          "policy_ids": [
+            "CN-REG-001",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-002",
+            "CN-REG-002",
+            "CN-CONSUMER-006"
+          ],
+          "latency_ms": 4.576399995130487
+        },
+        {
+          "query_id": "v2_ecommerce_records",
+          "policy_ids": [
+            "CN-REG-002",
+            "CN-CONSUMER-006",
+            "CN-REG-003",
+            "CN-QUALITY-008",
+            "CN-CONSUMER-004"
+          ],
+          "latency_ms": 4.496100002143066
+        },
+        {
+          "query_id": "v2_ecommerce_dispute",
+          "policy_ids": [
+            "CN-REG-003",
+            "CN-REG-002",
+            "CN-QUALITY-008",
+            "CN-QUALITY-011",
+            "CN-QUALITY-009"
+          ],
+          "latency_ms": 11.104800003522541
+        },
+        {
+          "query_id": "v2_wrong_region",
+          "policy_ids": [],
+          "latency_ms": 0.03840000135824084
+        },
+        {
+          "query_id": "v2_before_effective",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-QUALITY-005",
+            "CN-CONSUMER-005",
+            "CN-CONSUMER-002"
+          ],
+          "latency_ms": 1.3985000041429885
+        },
+        {
+          "query_id": "v2_policy_id",
+          "policy_ids": [
+            "CN-7DAY-002",
+            "CN-7DAY-012",
+            "CN-7DAY-008",
+            "CN-7DAY-007",
+            "CN-CONSUMER-002"
+          ],
+          "latency_ms": 4.187999998976011
+        },
+        {
+          "query_id": "v2_mixed_language",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-001",
+            "CN-QUALITY-005"
+          ],
+          "latency_ms": 4.701999998360407
+        }
+      ]
+    },
+    "hybrid_rerank": {
+      "config": {
+        "live_embedding": true,
+        "split": null,
+        "max_inputs": 64,
+        "top_k": 5,
+        "candidate_k": 10,
+        "output": "..\\experiments\\results\\step4-policy-retrieval-live-2026-09-04.json",
+        "arms": [
+          "exact",
+          "bm25",
+          "semantic",
+          "hybrid",
+          "hybrid_rerank"
+        ]
+      },
+      "metrics": {
+        "query_count": 28,
+        "recall_at_k": 0.7885,
+        "mrr": 0.6923,
+        "empty_result_rate": 0.5,
+        "must_not_precision": 0.9286,
+        "p50_ms": 8.927,
+        "p95_ms": 13.317
+      },
+      "cases": [
+        {
+          "query_id": "v2_return_window_plain",
+          "policy_ids": [
+            "CN-7DAY-010",
+            "CN-QUALITY-005",
+            "CN-7DAY-011",
+            "CN-7DAY-001",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 16.572400003497023
+        },
+        {
+          "query_id": "v2_return_window_paraphrase",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-7DAY-010",
+            "CN-7DAY-001",
+            "CN-7DAY-003",
+            "CN-7DAY-007"
+          ],
+          "latency_ms": 13.317199998709839
+        },
+        {
+          "query_id": "v2_return_exception_custom",
+          "policy_ids": [
+            "CN-7DAY-001",
+            "CN-QUALITY-005",
+            "CN-7DAY-003",
+            "CN-QUALITY-001",
+            "CN-7DAY-009"
+          ],
+          "latency_ms": 12.677200000325684
+        },
+        {
+          "query_id": "v2_return_exception_digital",
+          "policy_ids": [
+            "CN-7DAY-003",
+            "CN-7DAY-007",
+            "CN-7DAY-001",
+            "CN-7DAY-006",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 8.927099996071775
+        },
+        {
+          "query_id": "v2_return_accessories",
+          "policy_ids": [
+            "CN-7DAY-004",
+            "CN-QUALITY-002",
+            "CN-7DAY-010",
+            "CN-7DAY-008",
+            "CN-7DAY-001"
+          ],
+          "latency_ms": 4.496399997151457
+        },
+        {
+          "query_id": "v2_refund_payment",
+          "policy_ids": [
+            "CN-7DAY-005",
+            "CN-7DAY-011",
+            "CN-7DAY-010",
+            "CN-7DAY-012",
+            "CN-7DAY-004"
+          ],
+          "latency_ms": 5.091700004413724
+        },
+        {
+          "query_id": "v2_return_freight",
+          "policy_ids": [
+            "CN-7DAY-006",
+            "CN-7DAY-007",
+            "CN-7DAY-001",
+            "CN-7DAY-008",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 6.736600000294857
+        },
+        {
+          "query_id": "v2_quality_path",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-7DAY-001",
+            "CN-7DAY-009",
+            "CN-7DAY-003",
+            "CN-QUALITY-001"
+          ],
+          "latency_ms": 12.76510000025155
+        },
+        {
+          "query_id": "v2_quality_freight",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-QUALITY-002",
+            "CN-QUALITY-001",
+            "CN-7DAY-006",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 3.4586999972816557
+        },
+        {
+          "query_id": "v2_quality_evidence",
+          "policy_ids": [
+            "CN-QUALITY-009",
+            "CN-QUALITY-001",
+            "CN-QUALITY-002",
+            "CN-QUALITY-006",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 13.17659999767784
+        },
+        {
+          "query_id": "v2_quality_performance",
+          "policy_ids": [
+            "CN-QUALITY-006",
+            "CN-QUALITY-007",
+            "CN-QUALITY-004",
+            "CN-7DAY-009",
+            "CN-7DAY-012"
+          ],
+          "latency_ms": 12.984900000446942
+        },
+        {
+          "query_id": "v2_quality_label",
+          "policy_ids": [
+            "CN-QUALITY-007",
+            "CN-QUALITY-006",
+            "CN-QUALITY-004",
+            "CN-QUALITY-010",
+            "CN-REG-003"
+          ],
+          "latency_ms": 11.27420000557322
+        },
+        {
+          "query_id": "v2_three_guarantees",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-QUALITY-001",
+            "CN-7DAY-009",
+            "CN-QUALITY-007"
+          ],
+          "latency_ms": 11.096100002760068
+        },
+        {
+          "query_id": "v2_missing_category",
+          "policy_ids": [
+            "CN-QUALITY-012",
+            "CN-QUALITY-005",
+            "CN-QUALITY-007",
+            "CN-7DAY-009",
+            "CN-QUALITY-004"
+          ],
+          "latency_ms": 6.659200000285637
+        },
+        {
+          "query_id": "v2_risk_product",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-7DAY-003",
+            "CN-7DAY-009",
+            "CN-QUALITY-012",
+            "CN-REG-002"
+          ],
+          "latency_ms": 12.660699998377822
+        },
+        {
+          "query_id": "v2_damage_compensation",
+          "policy_ids": [
+            "CN-QUALITY-010",
+            "CN-QUALITY-011",
+            "CN-QUALITY-001",
+            "CN-QUALITY-005",
+            "CN-7DAY-011"
+          ],
+          "latency_ms": 10.697199999412987
+        },
+        {
+          "query_id": "v2_consumer_safety",
+          "policy_ids": [
+            "CN-CONSUMER-001",
+            "CN-QUALITY-001",
+            "CN-QUALITY-010",
+            "CN-QUALITY-011",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 5.264699997496791
+        },
+        {
+          "query_id": "v2_consumer_information",
+          "policy_ids": [
+            "CN-QUALITY-007",
+            "CN-QUALITY-006",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-REG-002"
+          ],
+          "latency_ms": 11.144999996758997
+        },
+        {
+          "query_id": "v2_consumer_choice",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-012",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-REG-003"
+          ],
+          "latency_ms": 5.787800000689458
+        },
+        {
+          "query_id": "v2_false_claim",
+          "policy_ids": [
+            "CN-QUALITY-005",
+            "CN-QUALITY-002",
+            "CN-CONSUMER-005",
+            "CN-CONSUMER-001",
+            "CN-QUALITY-003"
+          ],
+          "latency_ms": 5.201200001465622
+        },
+        {
+          "query_id": "v2_format_clause",
+          "policy_ids": [
+            "CN-CONSUMER-005",
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-7DAY-007",
+            "CN-7DAY-003"
+          ],
+          "latency_ms": 6.800400005886331
+        },
+        {
+          "query_id": "v2_ecommerce_promise",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-004",
+            "CN-QUALITY-003",
+            "CN-REG-001",
+            "CN-CONSUMER-006"
+          ],
+          "latency_ms": 7.528900001489092
+        },
+        {
+          "query_id": "v2_ecommerce_records",
+          "policy_ids": [
+            "CN-REG-002",
+            "CN-QUALITY-005",
+            "CN-REG-003",
+            "CN-CONSUMER-004",
+            "CN-CONSUMER-006"
+          ],
+          "latency_ms": 9.246699999494012
+        },
+        {
+          "query_id": "v2_ecommerce_dispute",
+          "policy_ids": [
+            "CN-REG-003",
+            "CN-REG-002",
+            "CN-7DAY-001",
+            "CN-QUALITY-008",
+            "CN-QUALITY-010"
+          ],
+          "latency_ms": 11.010299996996764
+        },
+        {
+          "query_id": "v2_wrong_region",
+          "policy_ids": [],
+          "latency_ms": 0.056400000175926834
+        },
+        {
+          "query_id": "v2_before_effective",
+          "policy_ids": [
+            "CN-QUALITY-002",
+            "CN-QUALITY-003",
+            "CN-CONSUMER-005",
+            "CN-QUALITY-005",
+            "CN-CONSUMER-002"
+          ],
+          "latency_ms": 2.342699997825548
+        },
+        {
+          "query_id": "v2_policy_id",
+          "policy_ids": [
+            "CN-CONSUMER-002",
+            "CN-CONSUMER-004",
+            "CN-7DAY-002",
+            "CN-7DAY-012",
+            "CN-7DAY-008"
+          ],
+          "latency_ms": 5.779599996458273
+        },
+        {
+          "query_id": "v2_mixed_language",
+          "policy_ids": [
+            "CN-QUALITY-003",
+            "CN-7DAY-006",
+            "CN-QUALITY-002",
+            "CN-7DAY-002",
+            "CN-CONSUMER-002"
+          ],
+          "latency_ms": 4.269199998816475
+        }
+      ]
+    }
+  }
+}

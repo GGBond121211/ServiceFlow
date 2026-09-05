@@ -1,3 +1,5 @@
+import os
+import sys
 from datetime import date, datetime
 from decimal import Decimal
 from time import perf_counter
@@ -7,9 +9,11 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from serviceflow.agent.intent import IntentExtractor
+from serviceflow.agent.context_assembler import ContextAssembler
+from serviceflow.agent.intent import PROMPT_PATH, IntentExtractor
 from serviceflow.agent.model import StructuredModel
 from serviceflow.agent.state import AgentState, ToolEvent
+from serviceflow.agent.tool_loop import ToolLoop
 from serviceflow.agent.tools import ServiceTools
 from serviceflow.application.results import CaseResult
 from serviceflow.domain.models import (
@@ -24,7 +28,15 @@ from serviceflow.domain.models import (
 )
 from serviceflow.domain.policies import evaluate_policy
 from serviceflow.domain.results import Decision
+from serviceflow.infrastructure.otel import Telemetry
+from serviceflow.infrastructure.qdrant_policy_store import PolicyRetriever
+from serviceflow.infrastructure.redis_store import RedisStore
 from serviceflow.infrastructure.timing import add_timing, measure_timing
+from serviceflow.infrastructure.tool_executor import ToolExecutor
+from serviceflow.mcp.client import MCPClient
+from serviceflow.mcp.host import MCPHost
+from serviceflow.mcp.server import MCPServer
+from serviceflow.mcp.stdio_client import StdioMCPClient
 
 DEMO_REFERENCE_DATE = "2026-08-01"
 
@@ -35,13 +47,78 @@ class ServiceGraphNodes:
         *,
         model: StructuredModel,
         session_factory: async_sessionmaker[AsyncSession],
+        redis_store: RedisStore | None = None,
+        policy_retriever: PolicyRetriever | None = None,
+        telemetry: Telemetry | None = None,
     ) -> None:
         self._extractor = IntentExtractor(model)
+        self._model = model
+        self._policy_retriever = policy_retriever
         self._session_factory = session_factory
+        self._telemetry = telemetry
+        self._context_assembler = ContextAssembler(
+            session_factory=session_factory,
+            default_prompt=PROMPT_PATH.read_text(encoding="utf-8"),
+            redis_store=redis_store,
+            policy_retriever=policy_retriever,
+        )
+
+    async def native_tool_loop(self, state: AgentState) -> AgentState:
+        async with self._session_factory() as session:
+            executor = ToolExecutor(
+                session,
+                policy_retriever=self._policy_retriever,
+                tenant_id=state.get("tenant_id", "default"),
+            )
+            client = MCPClient(MCPServer(executor))
+            stdio_client = None
+            if os.getenv("SERVICEFLOW_MCP_TRANSPORT", "in_process") == "stdio":
+                stdio_client = StdioMCPClient(
+                    (sys.executable, "-m", "serviceflow.mcp.stdio_server")
+                )
+                client = stdio_client
+            try:
+                host = MCPHost(client)
+                result = await ToolLoop(
+                    model=self._model, host=host, telemetry=self._telemetry
+                ).run(
+                    user_message=state["user_message"],
+                    user_id=state["user_id"],
+                    tenant_id=state.get("tenant_id", "default"),
+                    confirmed=bool(state.get("confirmed", False)),
+                    approval_granted=bool(state.get("approval_granted", False)),
+                    session_id=state.get("session_id", state.get("thread_id")),
+                    case_id=state.get("after_sales_case_id"),
+                    run_id=state.get("run_id"),
+                )
+            finally:
+                if stdio_client is not None:
+                    await stdio_client.close()
+        return {
+            "assistant_message": result.message,
+            "model_name": result.model,
+            "token_usage": {"input": result.input_tokens, "output": result.output_tokens},
+            "tool_events": result.tool_events,
+            "agent_status": result.status,
+            "final_business_state": result.business_state,
+            "pending_tool_call": result.pending_tool_call,
+            "pending_code": result.pending_code,
+        }
 
     async def extract_intent(self, state: AgentState) -> AgentState:
+        context = await self._context_assembler.assemble(state)
         with measure_timing("intent_total_ms"):
-            result = await self._extractor.extract(state["user_message"])
+            result = await self._extractor.extract(
+                state["user_message"],
+                system_prompt=context.prompt_content,
+                prompt_version=context.prompt_version,
+            )
+        await self._context_assembler.finish_prompt_run(
+            context.prompt_run_id,
+            model_version=result.model_name,
+            input_tokens=result.input_tokens,
+            output_tokens=result.output_tokens,
+        )
         token_usage = state.get("token_usage", {"input": 0, "output": 0})
         updates: AgentState = {
             "error": result.error,
@@ -52,6 +129,22 @@ class ServiceGraphNodes:
                 "output": token_usage["output"] + result.output_tokens,
             },
             "tool_events": state.get("tool_events", []),
+            "prompt_run_id": context.prompt_run_id,
+            "context_sections": list(context.build.kept_sections),
+            "context_dropped_sections": list(context.build.dropped_sections),
+            "context_tokens": context.build.estimated_input_tokens,
+            "policy_evidence": [
+                {
+                    "policy_id": item.document.policy_id,
+                    "version": item.document.version,
+                    "source": item.document.source_title,
+                    "source_locator": item.document.source_locator,
+                    "score": item.score,
+                }
+                for item in context.policy_evidence
+            ],
+            "policy_retrieval_backend": context.policy_backend,
+            "policy_retrieval_fallback": context.policy_fallback_reason,
         }
         if result.intent is None:
             return updates
@@ -238,9 +331,23 @@ def build_service_graph(
     model: StructuredModel,
     session_factory: async_sessionmaker[AsyncSession],
     checkpointer: BaseCheckpointSaver | None = None,
+    redis_store: RedisStore | None = None,
+    policy_retriever: PolicyRetriever | None = None,
+    telemetry: Telemetry | None = None,
 ):
-    nodes = ServiceGraphNodes(model=model, session_factory=session_factory)
+    nodes = ServiceGraphNodes(
+        model=model,
+        session_factory=session_factory,
+        redis_store=redis_store,
+        policy_retriever=policy_retriever,
+        telemetry=telemetry,
+    )
     builder = StateGraph(AgentState)
+    if hasattr(model, "complete_with_tools"):
+        builder.add_node("native_tool_loop", nodes.native_tool_loop)
+        builder.add_edge(START, "native_tool_loop")
+        builder.add_edge("native_tool_loop", END)
+        return builder.compile(checkpointer=checkpointer)
     builder.add_node("extract_intent", nodes.extract_intent)
     builder.add_node("route_missing_info", nodes.route_missing_info)
     builder.add_node("load_order", nodes.load_order)

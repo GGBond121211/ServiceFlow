@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: serviceflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: worker
+          image: serviceflow:2.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "serviceflow.agent.worker_entrypoint"]
+          ports:
+            - name: metrics
+              containerPort: 9101
+          envFrom:
+            - configMapRef:
+                name: serviceflow-config
+          env:
+            - name: SERVICEFLOW_WORKER_METRICS_PORT
+              value: "9101"
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: 1, memory: 1Gi}

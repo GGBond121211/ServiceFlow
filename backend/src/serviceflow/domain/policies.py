@@ -81,3 +81,30 @@ def _days_since_delivery(*, order: Order, reference_date: date) -> int | None:
     if order.delivered_at is None:
         return None
     return (reference_date - order.delivered_at.date()).days
+
+
+# 2.0 Step 2 新增。上面的 evaluate_policy 和三个阈值未改动（V1 冻结基线）。
+
+# 每个场景必须收集齐哪些事实。顺序即追问顺序。
+_REQUIRED_FACTS: dict[str, tuple[str, ...]] = {
+    "query": ("order_id",),
+    "cancel": ("order_id",),
+    "refund": ("order_id", "requested_action"),
+    "exchange": ("order_id", "requested_action", "issue_type"),
+    "repair": ("order_id", "requested_action", "issue_type"),
+    "complaint": ("order_id", "issue_type"),
+}
+
+_DEFAULT_REQUIRED_FACTS: tuple[str, ...] = ("order_id", "requested_action")
+
+
+def required_facts_for(scene_code: str | None) -> tuple[str, ...]:
+    # scene_code 为 None（这一轮没识别出场景）走兜底而非返回空，
+    # 否则案件会在信息不全的情况下直接进入 READY_TO_ACT。
+    if scene_code is None:
+        return _DEFAULT_REQUIRED_FACTS
+    return _REQUIRED_FACTS.get(scene_code, _DEFAULT_REQUIRED_FACTS)
+
+
+def requires_approval(amount: Decimal) -> bool:
+    return amount > APPROVAL_AMOUNT_THRESHOLD
